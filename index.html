@@ -45,7 +45,7 @@ h1{font-size:clamp(22px,6vw,38px);letter-spacing:3px;text-shadow:0 0 12px #e11,0
 .row{display:flex;gap:6px;width:100%}
 .row .hx{flex:1;width:auto}
 .hx small{display:block;font-size:10px;opacity:.8}
-.hx.wide>button{display:flex;align-items:center;gap:12px;text-align:left;font-size:19px;padding:10px 24px}
+.hx.wide>button{display:flex;align-items:center;gap:12px;text-align:left;font-size:19px;padding:10px 28px}
 .hx.wide small{font-size:12px;font-weight:normal}
 .hx.wide em{margin-left:auto;font-style:normal;font-size:26px}
 .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%}
@@ -55,7 +55,6 @@ h1{font-size:clamp(22px,6vw,38px);letter-spacing:3px;text-shadow:0 0 12px #e11,0
 .ar{display:flex;align-items:center}
 .ar button{background:none;border:0;color:#fff;font-size:22px;padding:0 6px}
 .ft{font-size:11px;letter-spacing:.3em;color:#4a8bff}
-.btn.intro{min-width:0;font-size:13px;padding:8px 16px;background:#070b22;border-color:#2a6bff}
 
 /* PANTALLA DE NIVELES */
 #lvs{background:radial-gradient(ellipse at 18% 8%,rgba(255,30,50,.38),transparent 55%),radial-gradient(ellipse at 82% 8%,rgba(30,90,255,.42),transparent 55%),linear-gradient(180deg,rgba(0,0,12,.6),rgba(5,5,25,.9))}
@@ -81,19 +80,18 @@ h1{font-size:clamp(22px,6vw,38px);letter-spacing:3px;text-shadow:0 0 12px #e11,0
 <div class="hx"><button id="nAi"><i>🤖</i>CONTRA<br>LA IA</button></div>
 <div class="hx"><button id="n2p"><i>👥</i>2 JUGADORES<small>(mismo dispositivo)</small></button></div>
 <div class="hx"><button id="nFree"><i>🎮</i>MODO<br>LIBRE</button></div></div>
-<div class="hx wide"><button id="nLv"><i>📶</i><span>NIVEL <b id="nlv">1</b><small id="ndf">Toca para elegir nivel</small></span><em>›</em></button></div>
+<div class="hx wide"><button id="nLv"><span>NIVEL <b id="nlv">1</b><small id="ndf">Toca para elegir nivel</small></span><em>›</em></button></div>
 <div class="row4">
 <button class="tile" id="nSnd"><i>🔊</i>SONIDO<b id="nsv">ON</b></button>
 <div class="tile"><i>🔉</i><input id="vol" type="range" min="0" max="100" value="70">VOLUMEN<b id="nvv">70%</b></div>
 <div class="tile">NIVEL<div class="ar"><button id="nlm">‹</button><b id="ndv">1</b><button id="nlp">›</button></div></div>
 <button class="tile" id="nBack"><i>↩</i>VOLVER<br>ARRIBA</button></div>
-<button class="btn intro" id="nIntro">🎬 VER INTRO</button>
 <div class="ft">— D.M.R PING PONG —</div>
 </div></div>
 
 <!-- PANTALLA DE NIVELES (aparte) -->
 <div id="lvs" class="ov hide"><div class="box">
-<h1>📶 NIVELES</h1>
+<h1>NIVELES</h1>
 <div class="leg">Nivel 1 = FÁCIL · 2-19 = MEDIO/DIFÍCIL · 20+ = EXPERTO<br>Supera un nivel para desbloquear el siguiente</div>
 <div id="grid"></div>
 <button class="btn" id="lvBack">↩ VOLVER AL MENÚ</button>
@@ -143,17 +141,23 @@ const SFX={ping:()=>tone(1500,.12,'triangle',1,900),pong:()=>tone(700,.14,'trian
 whoosh:()=>tone(100,1.2,'sawtooth',.4,1200),
 slam:()=>{tone(1500,.3,'sine',.5,200);setTimeout(()=>{tone(90,.5,'sawtooth',1,35);tone(900,.25,'square',.3,200)},300)},
 impact:()=>{tone(70,.9,'sawtooth',1,25);tone(1400,.6,'sine',.5,150)},
+boom:()=>{tone(75,.7,'sine',1.6,30);tone(150,.5,'sawtooth',.5,60)},   // bajo grave que acompaña la voz
 turbo:()=>{tone(300,.35,'square',.5,1600)},
 point:()=>{tone(523,.15,'square',.4);setTimeout(()=>tone(784,.2,'square',.4),130)},
 start:()=>{tone(400,.12,'square',.4);setTimeout(()=>tone(600,.12,'square',.4),120);setTimeout(()=>tone(900,.2,'square',.4),240)},
 win:()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.25,'square',.4),i*150)),
 lose:()=>[400,330,260,200].forEach((f,i)=>setTimeout(()=>tone(f,.3,'sawtooth',.4),i*180))};
 
-/* VOZ EN INGLÉS (letras, "presents", "Ping Pong") */
+/* VOZ DE HOMBRE GRUESA (inglés) */
 let VOX=null;
-function pickVoice(){if(!window.speechSynthesis)return;const v=speechSynthesis.getVoices().filter(a=>/^en/i.test(a.lang));VOX=v.find(a=>/male|david|daniel|guy|mark|james|alex|fred/i.test(a.name)&&!/female/i.test(a.name))||v[0]||null}
+function pickVoice(){if(!window.speechSynthesis)return;
+ const v=speechSynthesis.getVoices().filter(a=>/^en/i.test(a.lang));
+ VOX=v.find(a=>/en-us-x-(iom|iol|tpd|iog)|male|david|daniel|guy|mark|james|alex|fred|google uk english male/i.test(a.name)&&!/female/i.test(a.name))||v[0]||null}
 if(window.speechSynthesis){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
-function sayEn(t){if(mute||!window.speechSynthesis)return;try{const u=new SpeechSynthesisUtterance(t);u.lang='en-US';if(VOX)u.voice=VOX;u.pitch=.5;u.rate=.8;u.volume=Math.min(1,vol+.2);speechSynthesis.speak(u)}catch(e){}}
+function sayEn(t){if(mute)return;SFX.boom();
+ if(!window.speechSynthesis)return;
+ try{const u=new SpeechSynthesisUtterance(t);u.lang='en-US';if(VOX)u.voice=VOX;
+  u.pitch=0;u.rate=.75;u.volume=1;speechSynthesis.speak(u)}catch(e){}}
 
 /* FONDO */
 let mode='boot';
@@ -171,10 +175,10 @@ function ring(cx,cy,R,rot,al,u){x.save();x.globalAlpha=al;x.lineWidth=9*u;x.shad
 function burst(a,px,py,n,cols,sp){for(let i=0;i<n;i++){const an=Math.random()*6.28,v=Math.random()*sp;a.push({x:px,y:py,vx:Math.cos(an)*v,vy:Math.sin(an)*v,l:.6+Math.random()*.7,c:cols[i%cols.length]})}}
 function drawParts(a,dt){for(const q of a){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt;x.globalAlpha=Math.max(0,q.l);x.fillStyle=q.c;x.fillRect(q.x,q.y,3,3)}x.globalAlpha=1;for(let i=a.length-1;i>=0;i--)if(a[i].l<=0)a.splice(i,1)}
 
-/* INTRO: D · M · R (voz) → presents → PING / PONG → logo + "Ping Pong" */
+/* INTRO: Dee! Em! Are! → Presents! → PING / PONG → logo + "Ping Pong" */
 let I=null,ip=[],shocks=[],ptx=[];
 const HT=[4.5,5.4,6.2,6.9];
-function startIntro(){try{localStorage.setItem('dmr_intro_seen','1')}catch(e){}
+function startIntro(){
  try{speechSynthesis.cancel()}catch(e){}
  mode='intro';I={t:0,l:[0,0,0],say:0,pp:0,h:[0,0,0,0],b:[0,0,0],ex:0,sh:0,fl:0,tr:[]};ip=[];shocks=[];ptx=[];
  $('skip').classList.remove('hide');$('menu').classList.add('hide');$('lvs').classList.add('hide');$('hud').classList.add('hide');$('end').classList.add('hide');SFX.whoosh()}
@@ -188,13 +192,13 @@ function intro(dt){
  if(ringA>0)ring(cx,cy,(t<3.8?170:230)*u*(1+.04*Math.sin(t*6)),t*(t<3.8?1.5:2.5),ringA,u);
  if(t<4.1){const fo=1-cl((t-3.8)/.3);
   ['D','M','R'].forEach((L,i)=>{const t0=1.2+i*.7;if(t<t0)return;
-   if(!I.l[i]){I.l[i]=1;SFX.slam();sayEn(['Dee','Em','Are'][i]);I.sh=26;const lx=cx+(i-1)*150*u;shocks.push({x:lx,y:cy,r:10,l:.7});burst(ip,lx,cy,30,i==1?['#fff']:i?['#4a8bff']:['#ff4455'],320)}
+   if(!I.l[i]){I.l[i]=1;SFX.slam();sayEn(['Dee!','Em!','Are!'][i]);I.sh=26;const lx=cx+(i-1)*150*u;shocks.push({x:lx,y:cy,r:10,l:.7});burst(ip,lx,cy,30,i==1?['#fff']:i?['#4a8bff']:['#ff4455'],320)}
    const a=cl((t-t0)/.3),sc2=1+(1-a)*2.6,col=['#ff4455','#ffffff','#4a8bff'][i],lx2=cx+(i-1)*150*u;
    /* rayo de luz vertical detrás de cada letra */
    const bm=x.createLinearGradient(lx2-60*u,0,lx2+60*u,0);bm.addColorStop(0,'rgba(0,0,0,0)');bm.addColorStop(.5,col+'55');bm.addColorStop(1,'rgba(0,0,0,0)');
    x.globalAlpha=a*fo*(.6+.4*Math.sin(t*10));x.fillStyle=bm;x.fillRect(lx2-60*u,0,120*u,CH);x.globalAlpha=1;
    x.save();x.translate(lx2,cy);x.scale(sc2,sc2);txt(L,0,0,190*u,col,a*fo,col);x.restore()});
-  if(t>3.3){txt('D.M.R PRESENTS…',cx,cy+135*u,Math.min(36*u,CW*.07),'#fff',cl((t-3.3)*2.5)*fo,'#4a8bff');if(!I.say){I.say=1;sayEn('presents')}}}
+  if(t>3.3){txt('D.M.R PRESENTS…',cx,cy+135*u,Math.min(36*u,CW*.07),'#fff',cl((t-3.3)*2.5)*fo,'#4a8bff');if(!I.say){I.say=1;sayEn('Presents!')}}}
  for(const s of shocks){s.r+=dt*700*u;s.l-=dt;x.globalAlpha=Math.max(0,s.l);x.strokeStyle='#fff';x.lineWidth=4;x.beginPath();x.arc(s.x,s.y,s.r,0,6.28);x.stroke()}x.globalAlpha=1;
  if(t>=3.9&&t<7.6){
   const ax=Math.min(CW*.4,320*u),p0=cx-ax,p1=cx+ax,ty=cy+80*u,fa=cl((t-3.9)/.4);x.globalAlpha=fa;
@@ -221,7 +225,7 @@ function intro(dt){
   x.globalAlpha=a;x.fillStyle=g;x.fillRect(0,0,CW,CH);x.globalAlpha=1;
   if(logoOK){x.save();x.globalAlpha=a;x.translate(cx,ly);x.scale(e,e);x.drawImage(logo,-sz/2,-sz/2,sz,sz);x.restore()}
   const fs=Math.min(CW*.085,46);
-  if(t>8.9){txt('D.M.R PING PONG',cx,ly+sz/2+32*u+fs*.4,fs,'#fff',cl((t-8.9)*2),'#4a8bff');if(!I.pp){I.pp=1;sayEn('Ping Pong')}}
+  if(t>8.9){txt('D.M.R PING PONG',cx,ly+sz/2+32*u+fs*.4,fs,'#fff',cl((t-8.9)*2),'#4a8bff');if(!I.pp){I.pp=1;sayEn('Ping Pong!')}}
   if(t>10.2)txt('TAP TO PLAY',cx,CH-40,Math.min(CW*.05,22),'#ccd',.5+.5*Math.sin(t*5),'#27f');
   if(t>13)endIntro()}
  drawParts(ip,dt);x.restore();
@@ -230,13 +234,13 @@ function intro(dt){
 /* JUEGO */
 const W=800,H=500;let P,B,sc=[0,0],two=false,LPc,paused=false,serveT=0,gp=[],gtx=[],keys={},aiErr=0,O=null,orbT=4;
 /* DIFICULTAD DEL BOT
-   Nivel 1  : FÁCIL  (lento, solo sigue la pelota, falla mucho)
-   Nivel 2-20: medio-difícil → difícil (predice la trayectoria)
-   Nivel 20+: experto hasta el 100 */
+   Nivel 1   : FÁCIL (lento, solo sigue la pelota)
+   Nivel 2-20: MEDIO-DIFÍCIL (predice la trayectoria)
+   Nivel 21+ : DIFÍCIL hasta el 100 */
 function LP(L){
- if(L<=1)return{spd:190,err:140,base:340,boost:1.15,pred:false};
- if(L<=20){const k=(L-2)/18;return{spd:360+k*300,err:Math.round(70-k*45),base:400+k*60,boost:1.2,pred:true}}
- const k=(L-20)/80;return{spd:660+k*540,err:Math.round(25*(1-k)),base:460+k*80,boost:1.2+k*.15,pred:true}}
+ if(L<=1)return{spd:230,err:120,base:350,boost:1.15,pred:false};
+ if(L<=20){const k=(L-2)/18;return{spd:450+k*250,err:Math.round(45-k*30),base:430+k*50,boost:1.2,pred:true}}
+ const k=(L-20)/80;return{spd:700+k*500,err:Math.round(15*(1-k)),base:480+k*80,boost:1.2+k*.15,pred:true}}
 function updScore(){$('sc').textContent=(two?'J1':dn())+' '+sc[0]+' - '+sc[1]+(two?' J2':' BOT · NIVEL '+lvl)}
 function newGame(t){two=t;if(!t)lvl=selLv;LPc=LP(t?40:lvl);sc=[0,0];P=[{y:250,ty:250,h:90},{y:250,ty:250,h:90}];gp=[];gtx=[];O=null;orbT=4;paused=false;
  $('pz').classList.add('hide');mode='play';$('menu').classList.add('hide');$('lvs').classList.add('hide');$('end').classList.add('hide');$('bnext').classList.add('hide');$('hud').classList.remove('hide');updScore();SFX.start();serve(Math.random()<.5?1:-1)}
@@ -257,7 +261,7 @@ function update(dt){
   if(i===1&&!two){let t=250;
    if(B.vx>0){
     if(LPc.pred){let y=B.y+B.vy*(762-B.x)/B.vx;const per=2*(H-18),m=(((y-9)%per)+per)%per;y=9+(m<=H-18?m:per-m);t=y+aiErr}
-    else t=B.y+aiErr;                       // fácil: solo sigue la pelota
+    else t=B.y+aiErr;
    }
    p.y+=Math.max(-LPc.spd*dt,Math.min(LPc.spd*dt,t-p.y))}
   else{const up=i==0?(keys.KeyW||(!two&&keys.ArrowUp)):keys.ArrowUp,dn2=i==0?(keys.KeyS||(!two&&keys.ArrowDown)):keys.ArrowDown;
@@ -296,9 +300,8 @@ function loop(n){const dt=Math.min(.033,(n-lt)/1000);lt=n;try{frame(dt)}catch(e)
 requestAnimationFrame(loop);
 
 /* CONTROLES */
-$('bStart').onclick=()=>{au();$('start').classList.add('hide');startIntro()};
+$('bStart').onclick=()=>{au();$('start').classList.add('hide');startIntro()};   // la intro sale SIEMPRE al iniciar
 $('skip').onclick=()=>endIntro();
-$('nIntro').onclick=()=>{au();startIntro()};
 $('nPlay').onclick=$('nAi').onclick=()=>{au();newGame(false)};
 $('n2p').onclick=()=>{au();newGame(true)};
 $('nFree').onclick=()=>{au();selLv=1;paintGrid();newGame(false)};
@@ -322,9 +325,5 @@ function ptr(e){
  let lx=por?CH-e.clientY:e.clientX,ly=por?e.clientX:e.clientY;lx=(lx-OX)/S;ly=(ly-OY)/S;
  const i=two&&lx>W/2?1:0;P[i].ty=Math.max(P[i].h/2,Math.min(H-P[i].h/2,ly))}
 cv.addEventListener('pointerdown',ptr);cv.addEventListener('pointermove',ptr);
-
-/* ARRANQUE: si ya vio la intro, va directo al menú */
-let seen=false;try{seen=localStorage.getItem('dmr_intro_seen')==='1'}catch(e){}
-if(seen){$('start').classList.add('hide');mode='menu';$('menu').classList.remove('hide')}
 </script>
 </body></html>
