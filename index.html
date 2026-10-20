@@ -13,9 +13,14 @@ canvas{position:fixed;inset:0;width:100%;height:100%}
 .btn{background:linear-gradient(90deg,#d10,#14e);color:#fff;border:2px solid #fff4;border-radius:14px;padding:13px 20px;font-size:17px;font-weight:bold;min-width:240px;max-width:90vw;box-shadow:0 0 14px #14e8}
 .btn.sm{padding:8px 14px;font-size:14px;min-width:0}
 h1{font-size:clamp(22px,6vw,38px);letter-spacing:3px;text-shadow:0 0 12px #e11,0 0 22px #14f;text-align:center}
-#mlogo{width:min(34vw,24vh,210px);border-radius:50%}
+#lvbadge{font-size:clamp(28px,9vw,46px);font-weight:900;text-shadow:0 0 14px #e11,0 0 24px #14f;text-align:center}
+#lvsub{font-size:14px;opacity:.85;margin-top:-4px}
+#grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;width:min(92vw,380px);max-height:26vh;overflow-y:auto}
+.lb{padding:7px 0;font-size:12px;background:#112;color:#fff;border:1px solid #14e;border-radius:6px}
+.lb.sel{background:linear-gradient(90deg,#d10,#14e);border-color:#fff;font-weight:bold}
+.lb.lk{opacity:.3}
 label{font-size:15px;text-align:center}
-select,input{font-size:16px}
+input{font-size:16px}
 #pn{background:#111;color:#fff;border:2px solid #14e;border-radius:10px;padding:8px;text-align:center;width:200px;touch-action:auto;user-select:text}
 #ps{font-size:14px;opacity:.85}
 #skip{position:fixed;right:10px;bottom:14px;z-index:5}
@@ -30,15 +35,16 @@ select,input{font-size:16px}
 <div id="start" class="ov"><button id="bStart" class="btn">▶ TAP TO START</button></div>
 <button id="skip" class="btn sm hide">SKIP INTRO</button>
 <div id="menu" class="ov hide">
-<img id="mlogo" src="./logo.png" alt="logo"><h1>D.M.R PING PONG</h1>
+<h1>D.M.R PING PONG</h1>
+<div id="lvbadge">NIVEL <span id="lvn">1</span></div>
+<div id="lvsub">Mejor nivel superado: <b id="lvb">0</b> / 100</div>
+<div id="grid"></div>
 <input id="pn" maxlength="12" placeholder="Tu nombre">
 <div id="ps"></div>
-<label>Nivel del BOT: <b id="lv">1</b> / 100<br><input id="lvr" type="range" min="1" max="100" value="1" style="width:240px"></label>
 <button class="btn" id="b1">JUGAR vs BOT</button>
 <button class="btn" id="b2">2 JUGADORES</button>
 <label>Volumen <input id="vol" type="range" min="0" max="100" value="70"></label>
 <button class="btn sm" id="mute">🔊 Sonido: ON</button>
-<button class="btn sm" id="bint">▶ Ver intro</button>
 </div>
 <div id="hud" class="hide"><div id="sc">0 - 0</div><div class="bar"><button id="bp">⏸</button><button id="br">↻</button><button id="bm">☰</button></div></div>
 <div id="pz" class="hide">PAUSA</div>
@@ -54,18 +60,20 @@ function showErr(m){const e=$('err');e.style.display='block';e.textContent='Erro
 window.onerror=m=>showErr(m);
 const logo=new Image();let logoOK=false;
 logo.onload=()=>logoOK=true;
-logo.onerror=()=>showErr('No se encontró logo.png. Súbelo a la misma carpeta que index.html.');
+logo.onerror=()=>{};
 logo.src='./logo.png';
 
-/* PERFIL */
+/* PERFIL Y NIVELES */
 let prof={name:'PLAYER',w:0,l:0,best:0};
 try{Object.assign(prof,JSON.parse(localStorage.getItem('dmr_prof')||'{}'))}catch(e){}
 function saveP(){try{localStorage.setItem('dmr_prof',JSON.stringify(prof))}catch(e){}}
 function dn(){return prof.name||'PLAYER'}
-function showP(){$('pn').value=prof.name;$('ps').textContent='🏆 '+prof.w+'   ❌ '+prof.l+'   Mejor nivel: '+prof.best}
+let selLv=Math.min(100,prof.best+1),lvl=1;
+function paintGrid(){const k=$('grid').children;for(let i=0;i<k.length;i++){const n=i+1;k[i].className='lb'+(n>prof.best+1?' lk':'')+(n===selLv?' sel':'')}$('lvn').textContent=selLv;$('lvb').textContent=prof.best}
+function buildGrid(){const g=$('grid');g.innerHTML='';for(let i=1;i<=100;i++){const b=document.createElement('button');b.textContent=i;b.onclick=()=>{if(i>prof.best+1)return;selLv=i;paintGrid()};g.appendChild(b)}paintGrid()}
+function showP(){$('pn').value=prof.name;$('ps').textContent='🏆 '+prof.w+'   ❌ '+prof.l;paintGrid()}
 $('pn').oninput=e=>{prof.name=e.target.value.slice(0,12);saveP()};
-$('lvr').oninput=e=>$('lv').textContent=e.target.value;
-$('lvr').value=Math.min(100,prof.best+1);$('lv').textContent=$('lvr').value;showP();
+buildGrid();showP();
 
 /* AUDIO */
 let AC,vol=.7,mute=false;
@@ -100,10 +108,11 @@ function ring(cx,cy,R,rot,al,u){x.save();x.globalAlpha=al;x.lineWidth=9*u;x.shad
 function burst(a,px,py,n,cols,sp){for(let i=0;i<n;i++){const an=Math.random()*6.28,v=Math.random()*sp;a.push({x:px,y:py,vx:Math.cos(an)*v,vy:Math.sin(an)*v,l:.6+Math.random()*.7,c:cols[i%cols.length]})}}
 function drawParts(a,dt){for(const q of a){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt;x.globalAlpha=Math.max(0,q.l);x.fillStyle=q.c;x.fillRect(q.x,q.y,3,3)}x.globalAlpha=1;for(let i=a.length-1;i>=0;i--)if(a[i].l<=0)a.splice(i,1)}
 
-/* INTRO */
+/* INTRO (solo la primera vez) */
 let I=null,ip=[],shocks=[],ptx=[];
 const HT=[4.5,5.4,6.2,6.9];
-function startIntro(){mode='intro';I={t:0,l:[0,0,0],say:0,pp:0,h:[0,0,0,0],b:[0,0,0],ex:0,sh:0,fl:0,tr:[]};ip=[];shocks=[];ptx=[];
+function startIntro(){try{localStorage.setItem('dmr_intro_seen','1')}catch(e){}
+ mode='intro';I={t:0,l:[0,0,0],say:0,pp:0,h:[0,0,0,0],b:[0,0,0],ex:0,sh:0,fl:0,tr:[]};ip=[];shocks=[];ptx=[];
  $('skip').classList.remove('hide');$('menu').classList.add('hide');$('hud').classList.add('hide');$('end').classList.add('hide');SFX.whoosh()}
 function endIntro(){try{speechSynthesis.cancel()}catch(e){}mode='menu';$('skip').classList.add('hide');$('menu').classList.remove('hide');showP();I=null}
 const lerp=(a,b,t)=>a+(b-a)*t,cl=v=>Math.max(0,Math.min(1,v));
@@ -148,10 +157,10 @@ function intro(dt){
  if(I&&I.fl>0){x.globalAlpha=I.fl;x.fillStyle='#fff';x.fillRect(0,0,CW,CH);x.globalAlpha=1;I.fl=Math.max(0,I.fl-dt*2.2)}}
 
 /* JUEGO */
-const W=800,H=500;let P,B,sc=[0,0],two=false,lvl=1,LPc,paused=false,serveT=0,gp=[],gtx=[],keys={},aiErr=0,O=null,orbT=4;
+const W=800,H=500;let P,B,sc=[0,0],two=false,LPc,paused=false,serveT=0,gp=[],gtx=[],keys={},aiErr=0,O=null,orbT=4;
 function LP(L){const k=(L-1)/99;return{spd:180+k*820,err:Math.round(120*Math.pow(1-k,1.6)),base:380+k*140,boost:1.2+k*.25}}
-function updScore(){$('sc').textContent=(two?'J1':dn())+' '+sc[0]+' - '+sc[1]+(two?' J2':' BOT '+lvl)}
-function newGame(t){two=t;if(!t)lvl=+$('lvr').value;LPc=LP(t?40:lvl);sc=[0,0];P=[{y:250,ty:250,h:90},{y:250,ty:250,h:90}];gp=[];gtx=[];O=null;orbT=4;paused=false;
+function updScore(){$('sc').textContent=(two?'J1':dn())+' '+sc[0]+' - '+sc[1]+(two?' J2':' BOT · NIVEL '+lvl)}
+function newGame(t){two=t;if(!t)lvl=selLv;LPc=LP(t?40:lvl);sc=[0,0];P=[{y:250,ty:250,h:90},{y:250,ty:250,h:90}];gp=[];gtx=[];O=null;orbT=4;paused=false;
  $('pz').classList.add('hide');mode='play';$('menu').classList.add('hide');$('end').classList.add('hide');$('bnext').classList.add('hide');$('hud').classList.remove('hide');updScore();SFX.start();serve(Math.random()<.5?1:-1)}
 function serve(d){B={x:400,y:250,vx:0,vy:0,sp:LPc.base,d,tr:[],hot:0};serveT=1;O=null;orbT=3+Math.random()*2}
 function point(w){sc[w]++;updScore();SFX.point();burst(gp,w?30:770,B.y,30,w?['#4a8bff']:['#ff4455'],300);
@@ -206,12 +215,11 @@ requestAnimationFrame(loop);
 /* CONTROLES */
 $('bStart').onclick=()=>{au();$('start').classList.add('hide');startIntro()};
 $('skip').onclick=()=>endIntro();
-$('bint').onclick=()=>{au();startIntro()};
 $('b1').onclick=()=>{au();newGame(false)};
 $('b2').onclick=()=>{au();newGame(true)};
 $('ba').onclick=()=>{au();newGame(two)};
-$('bnext').onclick=()=>{au();$('lvr').value=Math.min(100,lvl+1);$('lv').textContent=$('lvr').value;newGame(false)};
-$('bmenu').onclick=$('bm').onclick=()=>{mode='menu';paused=false;$('pz').classList.add('hide');$('end').classList.add('hide');$('hud').classList.add('hide');$('menu').classList.remove('hide');showP()};
+$('bnext').onclick=()=>{au();selLv=Math.min(100,lvl+1);paintGrid();newGame(false)};
+$('bmenu').onclick=$('bm').onclick=()=>{mode='menu';paused=false;$('pz').classList.add('hide');$('end').classList.add('hide');$('hud').classList.add('hide');$('menu').classList.remove('hide');selLv=Math.min(100,prof.best+1);showP()};
 $('bp').onclick=()=>{if(mode==='play'){paused=!paused;$('pz').classList.toggle('hide',!paused)}};
 $('br').onclick=()=>{if(mode==='play'||mode==='over')newGame(two)};
 $('vol').oninput=e=>vol=e.target.value/100;
@@ -224,5 +232,9 @@ function ptr(e){
  let lx=por?CH-e.clientY:e.clientX,ly=por?e.clientX:e.clientY;lx=(lx-OX)/S;ly=(ly-OY)/S;
  const i=two&&lx>W/2?1:0;P[i].ty=Math.max(P[i].h/2,Math.min(H-P[i].h/2,ly))}
 cv.addEventListener('pointerdown',ptr);cv.addEventListener('pointermove',ptr);
+
+/* ARRANQUE: si ya vio la intro, va directo al menú */
+let seen=false;try{seen=localStorage.getItem('dmr_intro_seen')==='1'}catch(e){}
+if(seen){$('start').classList.add('hide');mode='menu';$('menu').classList.remove('hide')}
 </script>
 </body></html>
