@@ -62,7 +62,8 @@ p{font-size:20px;letter-spacing:3px;text-shadow:0 0 10px var(--p)}
   .screen{gap:8px}h1{font-size:44px;margin-bottom:4px}
   .btn{padding:9px 26px;font-size:15px}.btn.alt{padding:8px 22px;font-size:13px}.sw{width:42px;height:42px}
 }
-</style></head>
+</style>
+</head>
 <body>
 <canvas id="cv"></canvas>
 <div id="msg"></div>
@@ -105,7 +106,8 @@ p{font-size:20px;letter-spacing:3px;text-shadow:0 0 10px var(--p)}
   <button class="btn alt" data-go="home">☰ MENÚ</button>
 </section>
 
-<script>'use strict';
+<script>
+'use strict';
 /* ===== D·M·R | DIVINE PONG — Vanilla JS, sin librerías ===== */
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),$=id=>document.getElementById(id);
 const H=500,WIN=7,BASE_H=90,PW=14,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
