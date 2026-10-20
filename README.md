@@ -1,918 +1,455 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ajedrez</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D·M·R | DEATH PING</title>
+  <style>
+    :root {
+      --bg-1: #020611;
+      --bg-2: #0a1220;
+      --bg-3: #111827;
+      --panel: rgba(10, 15, 28, 0.82);
+      --line: rgba(148, 163, 184, 0.24);
+      --text: #edf6ff;
+      --muted: #a5b4cf;
+      --cyan: #67e8f9;
+      --blue: #38bdf8;
+      --purple: #a78bfa;
+      --pink: #f472b6;
+      --red: #ff4d6d;
+      --gold: #facc15;
+      --green: #4ade80;
+      --shadow: rgba(0, 0, 0, 0.56);
+    }
 
-<style>
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+    * { box-sizing: border-box; }
 
-body {
-    min-height: 100vh;
-    background: #111827;
-    color: white;
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 15px;
-}
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(103, 232, 249, 0.16), transparent 20%),
+        radial-gradient(circle at 80% 0%, rgba(167, 139, 250, 0.14), transparent 24%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2) 38%, var(--bg-3));
+      color: var(--text);
+      overflow: hidden;
+    }
 
-.game {
-    width: min(95vw, 850px);
-    text-align: center;
-}
-
-h1 {
-    margin-bottom: 12px;
-    font-size: clamp(25px, 6vw, 42px);
-}
-
-#status {
-    margin-bottom: 12px;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-.board {
-    width: min(92vw, 720px);
-    aspect-ratio: 1;
-    margin: auto;
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    border: 4px solid #222;
-    box-shadow: 0 10px 35px #0008;
-    touch-action: manipulation;
-}
-
-.square {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    user-select: none;
-}
-
-.light {
-    background: #f0d9b5;
-}
-
-.dark {
-    background: #b58863;
-}
-
-.square.selected {
-    outline: 5px solid #ffd700;
-    outline-offset: -5px;
-}
-
-.square.move::after {
-    content: "";
-    width: 25%;
-    height: 25%;
-    border-radius: 50%;
-    background: #35c759;
-    position: absolute;
-}
-
-.square.capture::after {
-    content: "";
-    width: 75%;
-    height: 75%;
-    border-radius: 50%;
-    border: 5px solid #ff4444;
-    position: absolute;
-}
-
-.piece {
-    font-size: clamp(32px, 9vw, 68px);
-    line-height: 1;
-    z-index: 2;
-    cursor: pointer;
-}
-
-.controls {
-    margin-top: 15px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-button {
-    border: none;
-    padding: 12px 20px;
-    border-radius: 10px;
-    background: #2563eb;
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-button:active {
-    transform: scale(.96);
-}
-
-.info {
-    margin-top: 15px;
-    background: #1f2937;
-    border-radius: 12px;
-    padding: 12px;
-}
-
-#moves {
-    margin-top: 8px;
-    max-height: 130px;
-    overflow-y: auto;
-    font-size: 14px;
-    text-align: left;
-}
-
-.promotion {
-    position: fixed;
-    inset: 0;
-    background: #0009;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-}
-
-.promotion-box {
-    background: #1f2937;
-    padding: 20px;
-    border-radius: 15px;
-    text-align: center;
-}
-
-.promotion-box h2 {
-    margin-bottom: 15px;
-}
-
-.promotion button {
-    font-size: 35px;
-    padding: 8px 15px;
-    margin: 5px;
-}
-
-@media (max-width: 450px) {
     body {
-        padding: 8px;
+      display: grid;
+      place-items: center;
+      padding: 22px;
     }
 
-    .board {
-        width: 96vw;
-        border-width: 2px;
+    .game-shell {
+      position: relative;
+      width: min(94vw, 980px);
+      padding: 18px 18px 14px;
+      background: rgba(9, 15, 28, 0.82);
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.5),
+        inset 0 0 26px rgba(103, 232, 249, 0.08),
+        0 0 40px rgba(244, 114, 182, 0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
-    .info {
-        font-size: 14px;
+    .game-shell::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 20px;
+      border: 1px solid rgba(103, 232, 249, 0.12);
+      pointer-events: none;
     }
 
-    button {
-        padding: 10px 14px;
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 2px 10px 16px;
+      position: relative;
+      z-index: 1;
     }
-}
-</style>
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink), var(--red));
+      box-shadow: 0 0 18px rgba(255, 77, 109, 0.9);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: -7px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 77, 109, 0.4);
+    }
+
+    .title {
+      font-size: clamp(1.05rem, 2vw, 2rem);
+      font-weight: 900;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: linear-gradient(90deg, var(--cyan), var(--purple), var(--pink));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 24px rgba(103, 232, 249, 0.5);
+    }
+
+    .hud {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .hud-pill {
+      padding: 7px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 0.66rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      box-shadow: inset 0 0 12px rgba(103, 232, 249, 0.04);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px;
+      background: rgba(7, 12, 21, 0.86);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow:
+        inset 0 0 28px rgba(103, 232, 249, 0.08),
+        0 12px 28px rgba(0, 0, 0, 0.24);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 10;
+      background: linear-gradient(180deg, rgba(9, 18, 32, 0.96), rgba(15, 23, 42, 0.98));
+      border-radius: 22px;
+      border: 2px solid rgba(148, 163, 184, 0.16);
+      box-shadow:
+        inset 0 0 30px rgba(103, 232, 249, 0.10),
+        inset 0 0 42px rgba(167, 139, 250, 0.05);
+    }
+
+    @media (max-width: 700px) {
+      body { padding: 12px; }
+      .game-shell { width: min(96vw, 980px); padding: 12px 12px 10px; }
+      .game-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding-bottom: 10px;
+      }
+      .title { letter-spacing: 0.12em; }
+      .hud { justify-content: flex-start; }
+      canvas { border-radius: 16px; }
+    }
+  </style>
 </head>
-
 <body>
-
-<div class="game">
-
-    <h1>♟️ AJEDREZ ♟️</h1>
-
-    <div id="status">Turno: Blancas</div>
-
-    <div id="board" class="board"></div>
-
-    <div class="controls">
-        <button onclick="restartGame()">🔄 Reiniciar</button>
-        <button onclick="undoMove()">↩️ Deshacer</button>
+  <div class="game-shell">
+    <div class="game-header">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <div class="title">D·M·R | DEATH PING</div>
+      </div>
+      <div class="hud">
+        <span class="hud-pill">Mouse / Arrows</span>
+        <span class="hud-pill">Arena Neon</span>
+      </div>
     </div>
 
-    <div class="info">
-        <strong>Movimientos</strong>
-        <div id="moves"></div>
+    <div class="canvas-wrap">
+      <canvas id="gameCanvas" width="900" height="560" aria-label="D·M·R | DEATH PING"></canvas>
     </div>
-
-</div>
-
-<div id="promotion" class="promotion">
-    <div class="promotion-box">
-        <h2>Elige una pieza</h2>
-        <div>
-            <button onclick="promote('Q')">♕</button>
-            <button onclick="promote('R')">♖</button>
-            <button onclick="promote('B')">♗</button>
-            <button onclick="promote('N')">♘</button>
-        </div>
-    </div>
-</div>
-
-<script>
-
-const boardElement = document.getElementById("board");
-const statusElement = document.getElementById("status");
-const movesElement = document.getElementById("moves");
-const promotionElement = document.getElementById("promotion");
-
-const symbols = {
-    w: {
-        K: "♔",
-        Q: "♕",
-        R: "♖",
-        B: "♗",
-        N: "♘",
-        P: "♙"
-    },
-    b: {
-        K: "♚",
-        Q: "♛",
-        R: "♜",
-        B: "♝",
-        N: "♞",
-        P: "♟"
-    }
-};
-
-let board;
-let turn;
-let selected;
-let legalMoves;
-let history;
-let moveList;
-let pendingPromotion = null;
-
-function createInitialBoard() {
-
-    return [
-        [
-            {c:"b",t:"R"},
-            {c:"b",t:"N"},
-            {c:"b",t:"B"},
-            {c:"b",t:"Q"},
-            {c:"b",t:"K"},
-            {c:"b",t:"B"},
-            {c:"b",t:"N"},
-            {c:"b",t:"R"}
-        ],
-
-        Array(8).fill(null).map(() => ({c:"b",t:"P"})),
-
-        Array(8).fill(null),
-        Array(8).fill(null),
-        Array(8).fill(null),
-        Array(8).fill(null),
-
-        Array(8).fill(null).map(() => ({c:"w",t:"P"})),
-
-        [
-            {c:"w",t:"R"},
-            {c:"w",t:"N"},
-            {c:"w",t:"B"},
-            {c:"w",t:"Q"},
-            {c:"w",t:"K"},
-            {c:"w",t:"B"},
-            {c:"w",t:"N"},
-            {c:"w",t:"R"}
-        ]
-    ];
-}
-
-function restartGame() {
-
-    board = createInitialBoard();
-
-    turn = "w";
-
-    selected = null;
-
-    legalMoves = [];
-
-    history = [];
-
-    moveList = [];
-
-    pendingPromotion = null;
-
-    promotionElement.style.display = "none";
-
-    render();
-
-    updateStatus();
-}
-
-function render() {
-
-    boardElement.innerHTML = "";
-
-    for (let r = 0; r < 8; r++) {
-
-        for (let c = 0; c < 8; c++) {
-
-            const square = document.createElement("div");
-
-            square.className =
-                "square " +
-                ((r + c) % 2 === 0 ? "light" : "dark");
-
-            square.dataset.row = r;
-            square.dataset.col = c;
-
-            if (
-                selected &&
-                selected.r === r &&
-                selected.c === c
-            ) {
-                square.classList.add("selected");
-            }
-
-            const possible = legalMoves.find(
-                m => m.r === r && m.c === c
-            );
-
-            if (possible) {
-
-                if (board[r][c]) {
-                    square.classList.add("capture");
-                } else {
-                    square.classList.add("move");
-                }
-            }
-
-            const piece = board[r][c];
-
-            if (piece) {
-
-                const element = document.createElement("div");
-
-                element.className = "piece";
-
-                element.textContent =
-                    symbols[piece.c][piece.t];
-
-                square.appendChild(element);
-            }
-
-            square.addEventListener("click", () => {
-                handleSquareClick(r, c);
-            });
-
-            boardElement.appendChild(square);
-        }
-    }
-
-    movesElement.innerHTML =
-        moveList.map((m,i) =>
-            `${i + 1}. ${m}`
-        ).join("<br>");
-}
-
-function handleSquareClick(r, c) {
-
-    if (pendingPromotion) return;
-
-    const piece = board[r][c];
-
-    if (selected) {
-
-        const move = legalMoves.find(
-            m => m.r === r && m.c === c
-        );
-
-        if (move) {
-
-            makeMove(
-                selected.r,
-                selected.c,
-                r,
-                c
-            );
-
-            return;
-        }
-    }
-
-    if (piece && piece.c === turn) {
-
-        selected = {r, c};
-
-        legalMoves = getLegalMoves(r, c);
-
-        render();
-    }
-}
-
-function getLegalMoves(r, c) {
-
-    const piece = board[r][c];
-
-    if (!piece) return [];
-
-    let moves = [];
-
-    if (piece.t === "P") {
-
-        const direction =
-            piece.c === "w" ? -1 : 1;
-
-        const startRow =
-            piece.c === "w" ? 6 : 1;
-
-        const one = r + direction;
-
-        if (
-            one >= 0 &&
-            one < 8 &&
-            !board[one][c]
-        ) {
-
-            moves.push({r:one,c});
-
-            const two = r + direction * 2;
-
-            if (
-                r === startRow &&
-                !board[two][c]
-            ) {
-                moves.push({r:two,c});
-            }
-        }
-
-        for (const dc of [-1,1]) {
-
-            const nr = r + direction;
-            const nc = c + dc;
-
-            if (
-                nr >= 0 &&
-                nr < 8 &&
-                nc >= 0 &&
-                nc < 8 &&
-                board[nr][nc] &&
-                board[nr][nc].c !== piece.c
-            ) {
-                moves.push({r:nr,c:nc});
-            }
-        }
-    }
-
-    if (piece.t === "N") {
-
-        const jumps = [
-            [-2,-1],
-            [-2,1],
-            [-1,-2],
-            [-1,2],
-            [1,-2],
-            [1,2],
-            [2,-1],
-            [2,1]
-        ];
-
-        for (const [dr,dc] of jumps) {
-
-            addIfValid(
-                moves,
-                r + dr,
-                c + dc,
-                piece.c
-            );
-        }
-    }
-
-    if (
-        piece.t === "B" ||
-        piece.t === "R" ||
-        piece.t === "Q"
-    ) {
-
-        const directions = [];
-
-        if (
-            piece.t === "B" ||
-            piece.t === "Q"
-        ) {
-            directions.push(
-                [-1,-1],
-                [-1,1],
-                [1,-1],
-                [1,1]
-            );
-        }
-
-        if (
-            piece.t === "R" ||
-            piece.t === "Q"
-        ) {
-            directions.push(
-                [-1,0],
-                [1,0],
-                [0,-1],
-                [0,1]
-            );
-        }
-
-        for (const [dr,dc] of directions) {
-
-            let nr = r + dr;
-            let nc = c + dc;
-
-            while (
-                nr >= 0 &&
-                nr < 8 &&
-                nc >= 0 &&
-                nc < 8
-            ) {
-
-                if (!board[nr][nc]) {
-
-                    moves.push({r:nr,c:nc});
-
-                } else {
-
-                    if (board[nr][nc].c !== piece.c) {
-                        moves.push({r:nr,c:nc});
-                    }
-
-                    break;
-                }
-
-                nr += dr;
-                nc += dc;
-            }
-        }
-    }
-
-    if (piece.t === "K") {
-
-        for (let dr = -1; dr <= 1; dr++) {
-
-            for (let dc = -1; dc <= 1; dc++) {
-
-                if (dr === 0 && dc === 0) continue;
-
-                addIfValid(
-                    moves,
-                    r + dr,
-                    c + dc,
-                    piece.c
-                );
-            }
-        }
-    }
-
-    return moves.filter(move => {
-
-        const copy = cloneBoard(board);
-
-        copy[move.r][move.c] =
-            copy[r][c];
-
-        copy[r][c] = null;
-
-        return !isKingInCheck(copy, piece.c);
-    });
-}
-
-function addIfValid(moves,r,c,color) {
-
-    if (
-        r < 0 ||
-        r >= 8 ||
-        c < 0 ||
-        c >= 8
-    ) return;
-
-    if (
-        !board[r][c] ||
-        board[r][c].c !== color
-    ) {
-        moves.push({r,c});
-    }
-}
-
-function makeMove(fr,fc,tr,tc) {
-
-    history.push({
-        board: cloneBoard(board),
-        turn: turn,
-        moveList: [...moveList]
-    });
-
-    const piece = board[fr][fc];
-
-    const captured = board[tr][tc];
-
-    board[tr][tc] = piece;
-    board[fr][fc] = null;
-
-    let notation =
-        symbols[piece.c][piece.t] +
-        " " +
-        squareName(tr,tc);
-
-    if (captured) {
-        notation += " × " +
-            symbols[captured.c][captured.t];
-    }
-
-    moveList.push(notation);
-
-    selected = null;
-    legalMoves = [];
-
-    if (
-        piece.t === "P" &&
-        (tr === 0 || tr === 7)
-    ) {
-
-        pendingPromotion = {
-            r: tr,
-            c: tc
-        };
-
-        promotionElement.style.display = "flex";
-
-        render();
-
-        return;
-    }
-
-    turn = turn === "w" ? "b" : "w";
-
-    render();
-
-    updateStatus();
-}
-
-function promote(type) {
-
-    if (!pendingPromotion) return;
-
-    board[pendingPromotion.r][pendingPromotion.c] = {
-        c: turn === "w" ? "b" : "w",
-        t: type
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const game = { width: canvas.width, height: canvas.height };
+
+    const paddleWidth = 16;
+    const paddleHeight = 120;
+    const ballRadius = 9;
+
+    const leftPaddle = {
+      x: 26,
+      y: game.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      speed: 9,
+      color: "#67e8f9"
     };
 
-    pendingPromotion = null;
+    const rightPaddle = {
+      x: game.width - 26 - paddleWidth,
+      y: game.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      speed: 6.5,
+      color: "#a78bfa"
+    };
 
-    promotionElement.style.display = "none";
+    const ball = {
+      x: game.width / 2,
+      y: game.height / 2,
+      radius: ballRadius,
+      vx: 5.8,
+      vy: 4.4
+    };
 
-    turn = turn === "w" ? "b" : "w";
+    const score = { left: 0, right: 0 };
+    const keys = { ArrowUp: false, ArrowDown: false };
 
-    render();
+    function resetBall(direction = 1) {
+      ball.x = game.width / 2;
+      ball.y = game.height / 2;
 
-    updateStatus();
-}
+      const angle = (Math.random() * Math.PI / 2) - Math.PI / 4;
+      const speed = 5.8 + Math.min((score.left + score.right) * 0.18, 2.5);
 
-function squareName(r,c) {
+      ball.vx = direction * speed * Math.cos(angle);
+      ball.vy = speed * Math.sin(angle);
+    }
 
-    const letters = "abcdefgh";
+    function updateLeftPaddle() {
+      if (keys.ArrowUp) leftPaddle.y -= leftPaddle.speed;
+      if (keys.ArrowDown) leftPaddle.y += leftPaddle.speed;
 
-    return letters[c] + (8-r);
-}
+      leftPaddle.y = Math.max(0, Math.min(game.height - leftPaddle.height, leftPaddle.y));
+    }
 
-function cloneBoard(b) {
+    function updateRightPaddle() {
+      const targetY = ball.y - rightPaddle.height / 2;
+      const diff = targetY - rightPaddle.y;
+      const movement = Math.min(Math.abs(diff), rightPaddle.speed);
+      rightPaddle.y += diff > 0 ? movement : -movement;
 
-    return b.map(row =>
-        row.map(piece =>
-            piece ? {...piece} : null
-        )
-    );
-}
+      rightPaddle.y = Math.max(0, Math.min(game.height - rightPaddle.height, rightPaddle.y));
+    }
 
-function findKing(b,color) {
+    function drawRoundedRect(x, y, w, h, r, fill, glow = null) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
 
-    for (let r=0;r<8;r++) {
+      if (glow) {
+        ctx.shadowColor = glow;
+        ctx.shadowBlur = 22;
+      }
 
-        for (let c=0;c<8;c++) {
+      ctx.fillStyle = fill;
+      ctx.fill();
 
-            if (
-                b[r][c] &&
-                b[r][c].c === color &&
-                b[r][c].t === "K"
-            ) {
-                return {r,c};
-            }
+      ctx.shadowBlur = 0;
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, game.width, game.height);
+
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, game.height);
+      bgGrad.addColorStop(0, "#071421");
+      bgGrad.addColorStop(1, "#101827");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, game.width, game.height);
+
+      for (let i = 0; i < 10; i++) {
+        const x = (i * 120 + 50) % game.width;
+        const y = (i * 90 + 30) % game.height;
+        ctx.beginPath();
+        ctx.fillStyle = i % 2 === 0 ? "rgba(103,232,249,0.08)" : "rgba(167,139,250,0.08)";
+        ctx.arc(x, y, 38 + (i % 3) * 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.setLineDash([18, 16]);
+      ctx.beginPath();
+      ctx.moveTo(game.width / 2, 0);
+      ctx.lineTo(game.width / 2, game.height);
+      ctx.strokeStyle = "rgba(230, 238, 252, 0.55)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.strokeStyle = "rgba(103,232,249,0.18)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(8, 8, game.width - 16, game.height - 16);
+
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fillRect(game.width / 2 - 96, 16, 192, 4);
+    }
+
+    function drawPaddle(paddle) {
+      drawRoundedRect(paddle.x, paddle.y, paddle.width, paddle.height, 16, paddle.color, paddle.color);
+
+      ctx.fillStyle = "rgba(255,255,255,0.22)";
+      ctx.fillRect(paddle.x + 5, paddle.y + 12, 3, paddle.height - 24);
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.fillStyle = "#facc15";
+      ctx.shadowColor = "rgba(250, 204, 21, 0.9)";
+      ctx.shadowBlur = 26;
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.arc(ball.x - 2, ball.y - 2, ball.radius / 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawScore() {
+      ctx.font = "800 42px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText(String(score.left), game.width / 2 - 72, 52);
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText(String(score.right), game.width / 2 + 72, 52);
+
+      ctx.font = "700 11px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(148,163,184,0.8)";
+      ctx.fillText("PLAYER", game.width / 2 - 72, 26);
+      ctx.fillText("CPU", game.width / 2 + 72, 26);
+    }
+
+    function handleWallCollision() {
+      if (ball.y - ball.radius <= 0) {
+        ball.y = ball.radius;
+        ball.vy *= -1;
+      }
+      if (ball.y + ball.radius >= game.height) {
+        ball.y = game.height - ball.radius;
+        ball.vy *= -1;
+      }
+    }
+
+    function handlePaddleCollision(paddle) {
+      const collidesX =
+        ball.x + ball.radius >= paddle.x &&
+        ball.x - ball.radius <= paddle.x + paddle.width;
+
+      const collidesY =
+        ball.y >= paddle.y &&
+        ball.y <= paddle.y + paddle.height;
+
+      if (collidesX && collidesY) {
+        const relativeIntersectY = (ball.y - (paddle.y + paddle.height / 2)) / (paddle.height / 2);
+        const bounceAngle = relativeIntersectY * (Math.PI / 3);
+
+        const direction = ball.x < game.width / 2 ? 1 : -1;
+        const speed = Math.min(Math.hypot(ball.vx, ball.vy) + 0.35, 12.5);
+
+        ball.vx = direction * speed * Math.cos(bounceAngle);
+        ball.vy = speed * Math.sin(bounceAngle);
+
+        if (direction === 1) {
+          ball.x = paddle.x + paddle.width + ball.radius;
+        } else {
+          ball.x = paddle.x - ball.radius;
         }
+      }
     }
 
-    return null;
-}
+    function updateBall() {
+      ball.x += ball.vx;
+      ball.y += ball.vy;
 
-function isKingInCheck(b,color) {
+      handleWallCollision();
+      handlePaddleCollision(leftPaddle);
+      handlePaddleCollision(rightPaddle);
 
-    const king = findKing(b,color);
+      if (ball.x - ball.radius <= 0) {
+        score.right += 1;
+        resetBall(1);
+      }
 
-    if (!king) return true;
-
-    const enemy =
-        color === "w" ? "b" : "w";
-
-    for (let r=0;r<8;r++) {
-
-        for (let c=0;c<8;c++) {
-
-            const piece = b[r][c];
-
-            if (!piece || piece.c !== enemy)
-                continue;
-
-            if (
-                attacksSquare(
-                    b,
-                    r,
-                    c,
-                    king.r,
-                    king.c
-                )
-            ) {
-                return true;
-            }
-        }
+      if (ball.x + ball.radius >= game.width) {
+        score.left += 1;
+        resetBall(-1);
+      }
     }
 
-    return false;
-}
+    canvas.addEventListener("mousemove", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleY = game.height / rect.height;
+      const mouseY = (event.clientY - rect.top) * scaleY;
 
-function attacksSquare(
-    b,
-    r,
-    c,
-    tr,
-    tc
-) {
+      leftPaddle.y = mouseY - leftPaddle.height / 2;
+      leftPaddle.y = Math.max(0, Math.min(game.height - leftPaddle.height, leftPaddle.y));
+    });
 
-    const piece = b[r][c];
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        keys[event.key] = true;
+      }
+    });
 
-    if (piece.t === "P") {
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        keys[event.key] = false;
+      }
+    });
 
-        const direction =
-            piece.c === "w" ? -1 : 1;
+    function gameLoop() {
+      updateLeftPaddle();
+      updateRightPaddle();
+      updateBall();
 
-        return (
-            tr === r + direction &&
-            Math.abs(tc-c) === 1
-        );
+      drawBackground();
+      drawPaddle(leftPaddle);
+      drawPaddle(rightPaddle);
+      drawBall();
+      drawScore();
+
+      requestAnimationFrame(gameLoop);
     }
 
-    if (piece.t === "N") {
-
-        const dr = Math.abs(tr-r);
-        const dc = Math.abs(tc-c);
-
-        return (
-            (dr === 2 && dc === 1) ||
-            (dr === 1 && dc === 2)
-        );
-    }
-
-    if (piece.t === "K") {
-
-        return (
-            Math.abs(tr-r) <= 1 &&
-            Math.abs(tc-c) <= 1
-        );
-    }
-
-    let dr = Math.sign(tr-r);
-    let dc = Math.sign(tc-c);
-
-    const validBishop =
-        Math.abs(tr-r) === Math.abs(tc-c);
-
-    const validRook =
-        tr === r || tc === c;
-
-    if (piece.t === "B" && !validBishop)
-        return false;
-
-    if (piece.t === "R" && !validRook)
-        return false;
-
-    if (
-        piece.t === "Q" &&
-        !validBishop &&
-        !validRook
-    )
-        return false;
-
-    let nr = r + dr;
-    let nc = c + dc;
-
-    while (nr !== tr || nc !== tc) {
-
-        if (b[nr][nc]) return false;
-
-        nr += dr;
-        nc += dc;
-    }
-
-    return true;
-}
-
-function hasAnyLegalMove(color) {
-
-    for (let r=0;r<8;r++) {
-
-        for (let c=0;c<8;c++) {
-
-            if (
-                board[r][c] &&
-                board[r][c].c === color
-            ) {
-
-                if (
-                    getLegalMoves(r,c).length > 0
-                ) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-function updateStatus() {
-
-    const name =
-        turn === "w"
-        ? "Blancas"
-        : "Negras";
-
-    if (isKingInCheck(board,turn)) {
-
-        if (!hasAnyLegalMove(turn)) {
-
-            statusElement.textContent =
-                "♚ JAQUE MATE — " +
-                (turn === "w"
-                    ? "Ganan negras"
-                    : "Ganan blancas");
-
-            return;
-        }
-
-        statusElement.textContent =
-            "⚠️ JAQUE — Turno: " + name;
-
-        return;
-    }
-
-    if (!hasAnyLegalMove(turn)) {
-
-        statusElement.textContent =
-            "🤝 TABLAS — Ahogado";
-
-        return;
-    }
-
-    statusElement.textContent =
-        "Turno: " + name;
-}
-
-function undoMove() {
-
-    if (history.length === 0) return;
-
-    const previous =
-        history.pop();
-
-    board =
-        cloneBoard(previous.board);
-
-    turn =
-        previous.turn;
-
-    moveList =
-        [...previous.moveList];
-
-    selected = null;
-
-    legalMoves = [];
-
-    pendingPromotion = null;
-
-    promotionElement.style.display = "none";
-
-    render();
-
-    updateStatus();
-}
-
-restartGame();
-
-</script>
-
+    resetBall(1);
+    requestAnimationFrame(gameLoop);
+  </script>
 </body>
 </html>
