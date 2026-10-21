@@ -1184,5 +1184,90 @@ $('pvSt').onclick=async()=>{SFX.click();if(!PVc)return;const ref=FS.doc(fb.db,'s
 async function refStars(){if(!fb||!ME)return;try{const st=await starQ(prof.id);$('cstn').textContent=st.size}catch(e){}}
 const _pfc=$('pf').onclick;$('pf').onclick=()=>{_pfc();refStars()};
 $('cst').onclick=()=>{au();SFX.click();refStars();toast('⭐ Tus amigos te dan estrellas desde tu perfil')};
+
+/* ===== D.M.R v6: botones admin, motivos, estrellas fijas, cerrar sesión en ajustes ===== */
+document.head.insertAdjacentHTML('beforeend',`<style>.rpc{border:2px solid var(--b);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;background:#0a1030}</style>`);
+
+/* 1) quitar "CREAR CUENTA ONLINE" del perfil */
+$('acB').remove();
+
+/* 2) CERRAR SESIÓN: sale de Amigos y va a Ajustes */
+$('f2Out').classList.add('hide');
+$('sClose').insertAdjacentHTML('beforebegin','<div class="r hide" id="sOutR"><span>👤 Cuenta</span><button id="sOut" class="tg">CERRAR SESIÓN</button></div>');
+$('gear').addEventListener('click',()=>sh('sOutR',!!ME));
+$('sOut').onclick=()=>{SFX.click();modal('CERRAR SESIÓN','¿Seguro que quieres cerrar sesión?',[['SÍ, CERRAR',()=>{sh('set',0);sh('fr2',0);$('frOut').onclick()}],['CANCELAR',null,'tg']])};
+
+/* 3) ESTRELLA: una vez dada ya no se quita */
+$('pvSt').closest('.panel').querySelector('.mini').textContent='Solo puedes dar una estrella a cada jugador';
+$('pvSt').onclick=async()=>{SFX.click();if(!PVc)return;
+ if(PVg){toast('⭐ Ya le diste una estrella a este jugador');return}
+ try{await FS.setDoc(FS.doc(fb.db,'stars',prof.id+'_'+PVc.id),{from:prof.id,to:PVc.id});PVg=true;SFX.point();
+  const st=await starQ(PVc.id);$('pvSn').textContent=st.size;$('pvSt').style.background='#ffd40055';toast('⭐ ¡Estrella enviada!')}catch(e){toast(errEs(e))}};
+
+/* 4) REPORTAR: pide el motivo */
+$('fmRep').onclick=()=>{SFX.click();const d=FMc;sh('fm',0);
+ modal('⚠ REPORTAR','¿Por qué quieres reportar a <b>'+esc(d.name)+'</b>?<br><input id="rpWhy" class="in" maxlength="140" placeholder="Escribe el motivo" autocomplete="off" style="margin-top:10px">',
+  [['ENVIAR REPORTE',async()=>{const why=$('rpWhy').value.trim();
+    if(!why){toast('Escribe el motivo del reporte');$('fmRep').onclick();return}
+    try{await FS.setDoc(FS.doc(fb.db,'reports',prof.id+'_'+d.id+'_'+Date.now()),{from:prof.id,to:d.id,fromName:prof.name,toName:d.name,why,t:Date.now()});toast('⚠ Reporte enviado')}catch(e){toast(errEs(e))}}],
+  ['CANCELAR',null,'tg']])};
+
+/* 5) BANEAR: pregunta por qué */
+$('bpBt').insertAdjacentHTML('beforebegin','<div class="pst">¿POR QUÉ QUIERES BANEAR A ESTE JUGADOR?</div><input id="bpWhy" class="in" maxlength="140" placeholder="Escribe el motivo" autocomplete="off">');
+const _ab=askBan;askBan=function(id,nm){$('bpWhy').value='';_ab(id,nm)};
+banUser=async function(id,nm,m){SFX.click();const why=$('bpWhy').value.trim();
+ if(!why){toast('Primero escribe por qué lo quieres banear');return}
+ try{await FS.setDoc(FS.doc(fb.db,'bans',id),{id,name:nm||'',perm:!m,until:m?Date.now()+m*60000:0,why,by:prof.id,t:Date.now()});
+  const s=await FS.getDocs(FS.query(FS.collection(fb.db,'reports'),FS.where('to','==',id)));await Promise.all(s.docs.map(d=>FS.deleteDoc(d.ref)));
+  sh('bp',0);toast('⛔ Jugador baneado');loadAdm()}catch(e){toast(errEs(e))}};
+
+/* 6) PANEL ADMIN con 3 botones */
+$('adm').querySelector('.panel').innerHTML=`
+ <h2>🛡 PANEL ADMIN</h2>
+ <div id="admMenu" style="display:flex;flex-direction:column;gap:12px">
+  <button class="btn" id="admB1">⚠ REPORTADOS <span id="admN1"></span></button>
+  <button class="btn" id="admB2">⛔ BANEAR POR ID</button>
+  <button class="btn" id="admB3">🚫 BANEADOS</button>
+ </div>
+ <div id="admV" class="hide" style="display:flex;flex-direction:column;gap:10px">
+  <div class="pst" id="admT"></div>
+  <div id="admRep" class="hide" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div id="admById" class="hide" style="display:flex;flex-direction:column;gap:10px">
+   <input id="admId" class="in" inputmode="numeric" maxlength="8" placeholder="ID del jugador (8 números)">
+   <button class="btn" id="admGo">⛔ BANEAR ESTE ID</button>
+  </div>
+  <div id="admBan" class="hide" style="display:flex;flex-direction:column;gap:10px"></div>
+  <button class="tg" id="admBk">‹ ATRÁS</button>
+ </div>
+ <button class="btn" id="admX">VOLVER</button>`;
+let AV=0,RP=[];
+function admView(n){AV=n;sh('admMenu',n==0);sh('admV',n>0);sh('admRep',n==1);sh('admById',n==2);sh('admBan',n==3);
+ $('admT').textContent=['','⚠ REPORTADOS','⛔ BANEAR POR ID','🚫 BANEADOS'][n];
+ if(n==0)cntRep();if(n==1)loadRep();if(n==3)loadBans()}
+async function cntRep(){try{const s=await FS.getDocs(FS.collection(fb.db,'reports'));$('admN1').textContent=s.size?'('+s.size+')':''}catch(e){}}
+loadAdm=()=>admView(AV);
+async function loadRep(){const R=$('admRep');R.innerHTML='<div class="pst">…</div>';
+ try{const rs=await FS.getDocs(FS.query(FS.collection(fb.db,'reports'),FS.limit(300)));
+  RP=[];rs.forEach(d=>RP.push({k:d.id,...d.data()}));RP.sort((a,b)=>(b.t||0)-(a.t||0));
+  R.innerHTML=RP.map((q,i)=>'<div class="rpc"><div class="pst" style="text-align:left;line-height:1.6;letter-spacing:0;font-size:13px;opacity:1">🗣 El jugador <b>'+esc(q.fromName||'ID '+q.from)+'</b> reportó al jugador <b>'+esc(q.toName||'ID '+q.to)+'</b><br>📝 Motivo: <b>'+esc(q.why||'(sin motivo)')+'</b></div><div class="bg"><button class="tg mn" data-a="b" data-i="'+i+'">⛔ BANEAR</button><button class="tg mn" data-a="p" data-i="'+i+'">👤 PERFIL</button></div><button class="tg mn" data-a="x" data-i="'+i+'">DESCARTAR</button></div>').join('')||'<div class="pst">Sin reportes</div>';
+  R.querySelectorAll('button').forEach(b=>b.onclick=async()=>{SFX.click();const q=RP[+b.dataset.i],a=b.dataset.a;
+   if(a==='b')askBan(q.to,q.toName||'');
+   else if(a==='p')openPv(q.to);
+   else{try{await FS.deleteDoc(FS.doc(fb.db,'reports',q.k));toast('Reporte descartado');loadRep()}catch(e){toast(errEs(e))}}})
+ }catch(e){R.textContent=errEs(e)}}
+async function loadBans(){const B=$('admBan');B.innerHTML='<div class="pst">…</div>';
+ try{const bs=await FS.getDocs(FS.collection(fb.db,'bans')),act=[];bs.forEach(d=>{const b=d.data();if(b.perm||b.until>Date.now())act.push(b)});
+  B.innerHTML=act.map(b=>'<div class="rpc">'+adT({id:b.id,name:b.name||'?'},b.perm?'PERMANENTE':'quedan '+fmtT(b.until-Date.now()))+(b.why?'<div class="pst" style="text-align:left;letter-spacing:0;font-size:12px">📝 '+esc(b.why)+'</div>':'')+'<button class="tg mn" data-i="'+esc(b.id)+'">✅ DESBANEAR</button></div>').join('')||'<div class="pst">Nadie baneado</div>';
+  B.querySelectorAll('button').forEach(b=>b.onclick=async()=>{SFX.click();try{await FS.deleteDoc(FS.doc(fb.db,'bans',b.dataset.i));toast('✅ Desbaneado');loadBans()}catch(e){toast(errEs(e))}})
+ }catch(e){B.textContent=errEs(e)}}
+$('admB1').onclick=()=>{SFX.click();admView(1)};
+$('admB2').onclick=()=>{SFX.click();$('admId').value='';admView(2)};
+$('admB3').onclick=()=>{SFX.click();admView(3)};
+$('admBk').onclick=()=>{SFX.click();admView(0)};
+$('admX').onclick=()=>{SFX.click();sh('adm',0)};
+$('admGo').onclick=async()=>{SFX.click();const id=$('admId').value.trim();
+ if(!/^\d{8}$/.test(id)){toast('Escribe un ID de 8 números');return}
+ try{const d=await pget(id);if(!d){toast('No existe ese ID');return}askBan(id,d.name)}catch(e){toast(errEs(e))}};
+$('nAdm').onclick=()=>{au();SFX.click();if(!isAdm())return;sh('adm',1);admView(0)};
 </script>
 </body></html>
