@@ -1789,6 +1789,45 @@ rf9();
 })();
 
 
+/* ===== ARREGLOS FINALES: misiones, moneda, cuenta Martinez, cuenta regresiva ===== */
+(function(){
+ if(window.__dmrFinal)return;window.__dmrFinal=1;
+
+ /* 1) el usuario "Martinez" es tu cuenta admin y verificada */
+ ADM.push('martinez@dmrping.app');
+
+ /* 2) misiones y monedas cuando la partida termina por tiempo */
+ let prev=mode,L0=_pl(),done=false;
+ const _ng=newGame;
+ newGame=function(t){_ng(t);L0=_pl();done=false};
+ setInterval(()=>{
+  if(prev==='play'&&mode==='over'&&!two&&!done){
+   done=true;
+   try{msnR().p.pts+=sc[0];endRw(sc[0]>sc[1],L0)}catch(e){showErr(e.message)}
+  }
+  prev=mode;
+ },150);
+
+ /* 3) moneda: signo $ sin duplicarse */
+ updPC=function(){
+  $('pcTop').textContent='$ '+fmt(prof.pc);
+  $('pcS').textContent='$ '+fmt(prof.pc)};
+ updPC();
+ let tm=0;
+ const fix=()=>{const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
+  while((n=w.nextNode())){if(/\$\s*\$/.test(n.nodeValue))n.nodeValue=n.nodeValue.replace(/\$\s*\$/g,()=>'$')}};
+ new MutationObserver(()=>{clearTimeout(tm);tm=setTimeout(fix,250)})
+  .observe(document.body,{childList:true,subtree:true,characterData:true});
+
+ /* 4) el reloj de 2 minutos empieza DESPUÉS del 3-2-1 */
+ const _u2=update;
+ update=function(dt){
+  if(CDT>0){CDT-=dt;const c=Math.ceil(CDT);if(c!==CDL){CDL=c;if(c>0&&c<4)SFX.click()}return}
+  _u2(dt)};
+})();
+
+
+
 
 
 
