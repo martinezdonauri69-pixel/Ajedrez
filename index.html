@@ -1736,6 +1736,61 @@ rf9();
 
 
 
+/* ===== MONEDA "$" + AJUSTES CLÁSICO ===== */
+(function(){
+ /* estilo clásico para la ventana de ajustes */
+ const st=document.createElement('style');
+ st.textContent=`
+ .cls{box-shadow:none!important;border-radius:14px!important;background:#0b0f24!important;gap:0!important}
+ .cls h1,.cls h2{font-size:18px!important;letter-spacing:3px!important;text-shadow:none!important;padding-bottom:10px;border-bottom:1px solid #ffffff2a}
+ .cls .r{padding:13px 0!important;border-bottom:1px solid #ffffff1a;font-weight:600!important;font-size:15px!important}
+ .cls button:not(.btn){box-shadow:none!important;background:transparent!important;border-radius:8px!important;font-weight:700!important}
+ .cls input[type=range]{accent-color:#ffffff}`;
+ document.head.appendChild(st);
+
+ const SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1};
+
+ /* 1) moneda: cambia el icono roto y "PC" por el signo $ */
+ function fixMoney(){
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
+  while((n=w.nextNode())){
+   if(SKIP[n.parentNode.nodeName])continue;
+   const o=n.nodeValue;
+   const v=o.replace(/🪙/g,()=>'$').replace(/(\d[\d.,]*)\s*PC\b/g,(m,a)=>'$'+a).replace(/\bPC\b/g,()=>'$');
+   if(v!==o)n.nodeValue=v}}
+
+ /* 2) ajustes: quita todos los iconos menos el de Sonido */
+ function fixSettings(){
+  const h=[...document.querySelectorAll('h1,h2,h3,div,b,span')].find(e=>!e.children.length&&/^[^A-Za-zÁÉÍÓÚÑ]*AJUSTES$/i.test(e.textContent.trim()));
+  if(!h)return;
+  const panel=h.closest('.panel')||h.parentElement;
+  panel.classList.add('cls');
+  /* iconos escritos como texto (emoji al inicio) */
+  const w=document.createTreeWalker(panel,NodeFilter.SHOW_TEXT);let n;
+  while((n=w.nextNode())){
+   const o=n.nodeValue;
+   if(/Sonido/i.test(o)||SKIP[n.parentNode.nodeName])continue;
+   const v=o.replace(/^[^\p{L}\p{N}]+/u,'');
+   if(v&&v!==o)n.nodeValue=v}
+  /* iconos que son elementos aparte (span, imagen, svg) */
+  panel.querySelectorAll('span,i,img,svg').forEach(e=>{
+   if(e.closest('button'))return;
+   if(e.children.length&&e.tagName!=='SVG')return;
+   const par=e.parentElement?e.parentElement.textContent:'';
+   if(/Sonido/i.test(par))return;
+   if(e.tagName==='IMG'||e.tagName==='SVG'||!/[\p{L}\p{N}]/u.test(e.textContent))e.style.display='none'})}
+
+ /* se aplica ahora y cada vez que cambie la pantalla */
+ let tm=0;
+ function run(){fixMoney();fixSettings()}
+ new MutationObserver(()=>{clearTimeout(tm);tm=setTimeout(run,200)})
+  .observe(document.body,{childList:true,subtree:true,characterData:true});
+ run();
+})();
+
+
+
+
 
 </script>
 
