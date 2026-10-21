@@ -863,6 +863,144 @@ $('frOut').onclick=async()=>{try{await FA.signOut(fb.auth)}catch(e){}
  ME=null;SY=false;guest=false;Object.assign(prof,{name:'PLAYER',w:0,l:0,best:0,nameSet:false,xp:0,av:0,photo:'',stars:0,card:0,id:genId()});_sv();showP();
  $('fr').classList.add('hide');openAcc()};
 
-const fbP=fbInit().catch(e=>{fb=null;console.log(e)});
+const fbP=fbInit().catch(e=>{fb=null;console.log(e)});/* ===== D.M.R v3 (todo en uno): amigos, solicitudes, online, verificado, admin ===== */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.vf{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:linear-gradient(135deg,#fff3a0,#ffc400);color:#5a3b00;font-size:11px;font-weight:900;box-shadow:0 0 8px #ffd400;vertical-align:middle}
+#fr2,#ad,#on2,#sr,#iv{background:rgba(0,0,10,.8);z-index:20}#ad,#sr,#iv{z-index:30}
+.tg.mn{min-width:0;padding:8px}
+#srT{font-size:54px;font-weight:900;text-align:center;text-shadow:0 0 14px var(--b)}
+</style>`);
+document.body.insertAdjacentHTML('beforeend',`
+<div id="fr2" class="ov hide"><div class="panel">
+ <h2>👥 AMIGOS</h2>
+ <div id="f2Off"><div class="pst" style="margin-bottom:12px">Necesitas una cuenta para tener amigos</div><button class="btn" id="f2Acc">CREAR CUENTA / ENTRAR</button></div>
+ <div id="f2On" class="hide" style="display:flex;flex-direction:column;gap:12px">
+  <div class="idrow"><span>TU ID <b id="f2Id"></b></span><button id="f2Cp" class="sm">📋</button></div>
+  <button class="btn" id="f2Add">➕ AGREGAR AMIGO</button>
+  <div class="pst">SOLICITUDES <span id="f2Rn"></span></div>
+  <div id="f2Rq" style="display:flex;flex-direction:column;gap:8px"></div>
+  <div class="pst">MIS AMIGOS</div>
+  <div id="f2List" style="display:flex;flex-direction:column;gap:8px"></div>
+  <button class="tg" id="f2Out">CERRAR SESIÓN</button>
+ </div>
+ <button class="btn" id="f2Close">VOLVER</button>
+</div></div>
+<div id="ad" class="ov hide"><div class="panel">
+ <h2>➕ AGREGAR AMIGO</h2>
+ <input id="adIn" class="in" maxlength="12" placeholder="Nombre o ID (8 números)" autocomplete="off">
+ <button class="btn" id="adGo">🔍 BUSCAR</button>
+ <div id="adRes" style="display:flex;flex-direction:column;gap:8px"></div>
+ <button class="tg" id="adX">VOLVER</button>
+</div></div>
+<div id="on2" class="ov hide"><div class="panel">
+ <h2>🌐 ONLINE</h2>
+ <button class="btn" id="onFind">🔎 BUSCAR JUGADORES EN LÍNEA</button>
+ <button class="btn" id="onInv">📨 INVITAR AMIGOS</button>
+ <button class="tg" id="onX">VOLVER</button>
+</div></div>
+<div id="sr" class="ov hide"><div class="panel">
+ <h2>🌐 BUSCANDO JUGADORES…</h2>
+ <div id="srT">5:00</div>
+ <div class="pst">Tiempo máximo de búsqueda</div>
+ <button class="btn" id="srX">CANCELAR</button>
+</div></div>
+<div id="iv" class="ov hide"><div class="panel">
+ <h2>📨 INVITAR AMIGOS</h2>
+ <div id="ivList" style="display:flex;flex-direction:column;gap:8px"></div>
+ <button class="tg" id="ivX">VOLVER</button>
+</div></div>`);
+
+const ADM=['mdonauri@gmail.com'];
+const isAdm=()=>!!(ME&&ME.email&&ADM.includes(ME.email.toLowerCase()));
+const VF='<span class="vf">✔</span>';
+const sh=(i,v)=>$(i).classList.toggle('hide',!v);
+
+/* cuenta admin: todo desbloqueado + verificado dorado */
+const _pl=plv;plv=function(){return isAdm()?100:_pl()};
+const _bp=buildPath;buildPath=function(){const b=prof.best;if(isAdm())prof.best=100;try{_bp()}finally{prof.best=b}};
+const _lt=levelTap;levelTap=function(i){const b=prof.best;if(isAdm())prof.best=100;try{_lt(i)}finally{prof.best=b}};
+const _sp=showP;showP=function(){_sp();if(isAdm())$('pnT').innerHTML=esc(dn())+' '+VF};
+setInterval(()=>{if(ME&&fb&&SY&&isAdm()&&!isAdm.d){isAdm.d=1;FS.setDoc(FS.doc(fb.db,'players',prof.id),{ver:true},{merge:true}).catch(()=>{isAdm.d=0})}},1500);
+
+/* quitar "Voz" de ajustes */
+$('vName').closest('.r').style.display='none';$('vSub').style.display='none';
+
+const row2=(d,b)=>`<div class="idrow" style="gap:8px"><div class="av" style='background-image:url("${AVS[d.av||0]||AVS[0]}")'></div><span style="flex:1;text-align:left"><b>${esc(d.name)}</b>${d.ver?' '+VF:''}<br><small>NIVEL ${d.level||1} · ID ${esc(d.id)}</small></span>${b}</div>`;
+const pget=async i=>{const s=await FS.getDoc(FS.doc(fb.db,'players',i));return s.exists()?s.data():null};
+const mineRef=()=>FS.doc(fb.db,'players',prof.id);
+
+/* amigos y solicitudes */
+let FR=[];
+async function getF(){
+ const me=(await FS.getDoc(mineRef())).data()||{},C=FS.collection(fb.db,'reqs');
+ const out=await FS.getDocs(FS.query(C,FS.where('from','==',prof.id)));
+ const inn=await FS.getDocs(FS.query(C,FS.where('to','==',prof.id)));
+ const ids=new Set(me.friends||[]),pend=[];
+ out.forEach(d=>{if(d.data().st==='ok')ids.add(d.data().to)});
+ inn.forEach(d=>{if(d.data().st!=='ok')pend.push(d.data().from)});
+ const fs=(await Promise.all([...ids].map(pget))).filter(Boolean),rs=(await Promise.all(pend.map(pget))).filter(Boolean);
+ FR=fs;return{fs,rs}}
+async function loadF2(){const L=$('f2List'),R=$('f2Rq');L.innerHTML=R.innerHTML='<div class="pst">…</div>';
+ try{const{fs,rs}=await getF();
+  L.innerHTML=fs.map(d=>row2(d,'')).join('')||'<div class="pst">Aún no tienes amigos agregados</div>';
+  R.innerHTML=rs.map(d=>row2(d,'<button class="tg mn" data-i="'+esc(d.id)+'" data-a="1">ACEPTAR</button><button class="tg mn" data-i="'+esc(d.id)+'">RECHAZAR</button>')).join('')||'<div class="pst">Sin solicitudes</div>';
+  $('f2Rn').textContent=rs.length?'('+rs.length+')':'';
+  R.querySelectorAll('button').forEach(b=>b.onclick=()=>answerReq(b.dataset.i,b.dataset.a==='1'))
+ }catch(e){L.textContent=errEs(e);R.textContent=''}}
+async function answerReq(from,ok){SFX.click();
+ try{const ref=FS.doc(fb.db,'reqs',from+'_'+prof.id);
+  if(ok){await FS.setDoc(ref,{from,to:prof.id,st:'ok'});await FS.setDoc(mineRef(),{friends:FS.arrayUnion(from)},{merge:true});SFX.point();toast('✔ AMIGO AGREGADO')}
+  else{await FS.deleteDoc(ref);toast('Solicitud rechazada')}
+  loadF2()}catch(e){toast(errEs(e))}}
+function openF2(){if(!fb){toast('🌐 Sin conexión con el servidor');return}
+ sh('fr2',1);sh('f2On',!!ME);sh('f2Off',!ME);if(ME){$('f2Id').textContent=prof.id;loadF2()}}
+$('nFr').onclick=()=>{au();SFX.click();openF2()};
+$('f2Acc').onclick=()=>{SFX.click();sh('fr2',0);openAcc()};
+$('f2Close').onclick=()=>{SFX.click();sh('fr2',0)};
+$('f2Cp').onclick=()=>{SFX.click();try{navigator.clipboard.writeText(prof.id).then(()=>toast('📋 ID COPIADO'),()=>toast('ID: '+prof.id))}catch(e){toast('ID: '+prof.id)}};
+$('f2Out').onclick=()=>{sh('fr2',0);$('frOut').onclick()};
+
+/* agregar amigo: por nombre o ID (aunque no esté conectado) */
+$('f2Add').onclick=()=>{SFX.click();$('adIn').value='';$('adRes').innerHTML='';sh('ad',1)};
+$('adX').onclick=()=>{SFX.click();sh('ad',0)};
+$('adGo').onclick=async()=>{SFX.click();const q=$('adIn').value.trim(),R=$('adRes');
+ if(!q){R.innerHTML='<div class="pst">Escribe un nombre o un ID</div>';return}
+ R.innerHTML='<div class="pst">Buscando…</div>';
+ try{let list=[];
+  if(/^\d{8}$/.test(q)){const d=await pget(q);if(d)list=[d]}
+  else{const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.where('name','==',q),FS.limit(8)));s.forEach(d=>list.push(d.data()))}
+  list=list.filter(d=>d.id!==prof.id);
+  if(!list.length){R.innerHTML='<div class="pst">No se encontró ningún jugador</div>';return}
+  R.innerHTML=list.map(d=>row2(d,'<button class="tg mn" data-i="'+esc(d.id)+'">AGREGAR</button>')).join('');
+  R.querySelectorAll('button').forEach(b=>b.onclick=()=>sendReq(b.dataset.i))
+ }catch(e){R.innerHTML='<div class="pst">'+esc(errEs(e))+'</div>'}};
+async function sendReq(id){SFX.click();
+ try{await FS.setDoc(FS.doc(fb.db,'reqs',prof.id+'_'+id),{from:prof.id,to:id,st:'p'});SFX.point();toast('✔ SOLICITUD ENVIADA');sh('ad',0)}catch(e){toast(errEs(e))}}
+
+/* ONLINE */
+let SQ=null;
+$('nOn').onclick=()=>{au();SFX.click();if(!fb){toast('🌐 Sin conexión con el servidor');return}sh('on2',1)};
+$('onX').onclick=()=>{SFX.click();sh('on2',0)};
+$('onFind').onclick=()=>{SFX.click();if(!ME){toast('Entra con tu cuenta para jugar online');return}sh('on2',0);startSearch()};
+function startSearch(){let left=300;const qd=FS.doc(fb.db,'queue',prof.id);
+ const fmt=()=>Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+ const stop=()=>{clearInterval(SQ);SQ=null;FS.deleteDoc(qd).catch(()=>{});sh('sr',0)};
+ $('srT').textContent=fmt();sh('sr',1);$('srX').onclick=()=>{SFX.click();stop()};
+ SQ=setInterval(async()=>{left--;$('srT').textContent=fmt();
+  if(left<=0){stop();modal('SIN JUGADORES','No hay jugadores en línea en este momento.<br>Intenta más tarde o invita a un amigo.',[['ENTENDIDO',null]]);return}
+  if(left%3===0){try{
+   await FS.setDoc(qd,{id:prof.id,name:prof.name,t:Date.now()});
+   const s=await FS.getDocs(FS.query(FS.collection(fb.db,'queue'),FS.where('t','>',Date.now()-12000)));
+   let o=null;s.forEach(d=>{if(d.id!==prof.id&&!o)o=d.data()});
+   if(o&&SQ){stop();SFX.win();modal('¡JUGADOR ENCONTRADO!','<b>'+esc(o.name)+'</b> está en línea.',[['OK',null]])}
+  }catch(e){}}},1000)}
+$('onInv').onclick=async()=>{SFX.click();if(!ME){toast('Entra con tu cuenta primero');return}
+ sh('on2',0);sh('iv',1);const L=$('ivList');L.innerHTML='<div class="pst">…</div>';
+ try{const{fs}=await getF();
+  L.innerHTML=fs.map(d=>row2(d,'<button class="tg mn" data-i="'+esc(d.id)+'">INVITAR</button>')).join('')||'<div class="pst">Aún no tienes amigos agregados</div>';
+  L.querySelectorAll('button').forEach(b=>b.onclick=async()=>{SFX.click();
+   try{await FS.setDoc(FS.doc(fb.db,'invites',prof.id+'_'+b.dataset.i),{from:prof.id,name:prof.name,to:b.dataset.i,t:Date.now()});toast('📨 INVITACIÓN ENVIADA')}catch(e){toast(errEs(e))}})
+ }catch(e){L.textContent=errEs(e)}};
+$('ivX').onclick=()=>{sh('iv',0);sh('on2',1)};
 </script>
 </body></html>
