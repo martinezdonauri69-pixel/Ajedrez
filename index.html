@@ -1555,29 +1555,45 @@ rf9();
  document.head.appendChild(s);
 })();
 
-/* ===== ENTRAR CON NOMBRE DE USUARIO + CONTRASEÑA (mínimo 8) ===== */
+/* ===== USUARIO + CONTRASEÑA (versión 2) ===== */
 (function(){
- $('aNm').placeholder='Nombre de usuario';
- $('aPw').placeholder='Contraseña (mínimo 8)';
  const fake=u=>u.toLowerCase()+'@dmrping.app';
  const okU=u=>/^[A-Za-z0-9_]{3,12}$/.test(u);
 
+ /* campo nuevo: confirmar contraseña */
+ if(!$('aPw2')){
+  const p2=document.createElement('input');
+  p2.id='aPw2';p2.className='in hide';p2.type='password';
+  p2.placeholder='Confirmar contraseña';p2.autocomplete='new-password';
+  $('aPw').insertAdjacentElement('afterend',p2);
+ }
+
+ /* mensajes en rojo */
+ const err=m=>{const a=$('aMsg');a.style.color='#ff4d5e';a.style.opacity='1';a.style.fontWeight='800';a.textContent=m?'❌ '+m:''};
+
+ /* cambia entre ENTRAR y CREAR USUARIO */
  acMode=function(c){acCreate=c;
+  $('aNm').classList.remove('hide');
   $('aNm').maxLength=c?12:60;
+  $('aNm').placeholder='Nombre de usuario';
   $('aEm').classList.toggle('hide',!c);
+  $('aPw2').classList.toggle('hide',!c);
+  $('aPw').placeholder=c?'Contraseña (mínimo 8)':'Contraseña';
+  $('aPw').autocomplete=c?'new-password':'current-password';
   $('aIn').textContent=c?'CREAR USUARIO':'ENTRAR';
-  $('aTg').textContent=c?'YA TENGO USUARIO':'CREAR USUARIO';
-  msgA('')};
+  $('aTg').textContent=c?'YA TENGO UN USUARIO':'CREAR USUARIO';
+  err('')};
 
  async function doAuth2(){
-  const nm=$('aNm').value.trim(),em=$('aEm').value.trim(),pw=$('aPw').value;
-  if(!fb){msgA('Sin conexión con el servidor. Intenta de nuevo.');return}
+  const nm=$('aNm').value.trim(),em=$('aEm').value.trim(),pw=$('aPw').value,pw2=$('aPw2').value;
+  if(!fb){err('Sin conexión con el servidor. Intenta de nuevo.');return}
   if(acCreate){
-   if(!okU(nm)){msgA('Usuario: de 3 a 12 letras, números o _ (sin espacios)');return}
-   if(!/^\S+@\S+\.\S+$/.test(em)){msgA('Escribe un correo válido');return}
-   if(pw.length<8){msgA('La contraseña necesita 8 o más caracteres');return}
-  }else if(!nm||!pw){msgA('Escribe tu usuario y tu contraseña');return}
-  msgA('Un momento…');
+   if(!okU(nm)){err('Usuario: de 3 a 12 letras, números o _ (sin espacios)');return}
+   if(!/^\S+@\S+\.\S+$/.test(em)){err('Escribe un correo válido');return}
+   if(pw.length<8){err('La contraseña necesita 8 o más caracteres');return}
+   if(pw!==pw2){err('Las contraseñas no coinciden');return}
+  }else if(!nm||!pw){err('Escribe tu usuario y tu contraseña');return}
+  const a=$('aMsg');a.style.color='#fff';a.textContent='Un momento…';
   try{
    if(acCreate){
     ME=(await FA.createUserWithEmailAndPassword(fb.auth,fake(nm),pw)).user;
@@ -1589,15 +1605,89 @@ rf9();
     ME=(await FA.signInWithEmailAndPassword(fb.auth,nm.indexOf('@')>0?nm:fake(nm),pw)).user;
     await loadMe();
    }
+   $('aPw').value='';$('aPw2').value='';err('');
    $('acc').classList.add('hide');SFX.point();toast('✔ Bienvenido '+dn());
   }catch(e){
-   msgA(e.code==='auth/email-already-in-use'?'Ese nombre de usuario ya existe'
-       :e.code==='auth/invalid-credential'?'Usuario o contraseña incorrectos'
-       :errEs(e));
+   err(e.code==='auth/email-already-in-use'?'Ese nombre de usuario ya existe'
+      :(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found')?'Usuario o contraseña incorrectos'
+      :e.code==='auth/too-many-requests'?'Demasiados intentos. Espera un momento'
+      :errEs(e));
   }}
  $('aIn').onclick=doAuth2;
  acMode(false);
 })();
+
+
+/* ===== TIEMPO LIMITADO: 2 MINUTOS (gana quien tenga más puntos) ===== */
+(function(){
+ const TLIM=120; /* segundos: cambia este número si quieres más o menos tiempo */
+ const TL={t:TLIM,on:false,sudden:false};
+
+ /* reloj en la esquina inferior izquierda (fuera del tablero) */
+ const el=document.createElement('div');
+ el.id='tmr';
+ el.style.cssText='position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:2;display:none;pointer-events:none;background:#000b;border:2px solid var(--b);border-radius:14px;padding:6px 12px;font-size:18px;font-weight:900;letter-spacing:1px;box-shadow:0 0 14px rgba(var(--bb),.6)';
+ document.body.appendChild(el);
+
+ function paint(){
+  if(TL.sudden){el.textContent='⚡ PUNTO DE ORO';el.style.color='#ffd400';return}
+  const s=Math.max(0,Math.ceil(TL.t));
+  el.textContent='⏱ '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  el.style.color=s<=10?'#ff4d5e':'#fff'}
+
+ /* fin de la partida (por tiempo o por punto de oro) */
+ function endMatch(why){
+  mode='over';TL.on=false;el.style.display='none';
+  const a=sc[0],c=sc[1],w0=a>c,pre=(why==='time'?'⏱ TIEMPO · ':'')+a+' - '+c;
+  if(two){
+   $('et').textContent='¡GANA '+(w0?(NM[0]||'J1'):(NM[1]||'J2'))+'!';
+   $('exp').textContent=pre;
+  }else{
+   $('et').textContent=w0?'¡NIVEL '+lvl+' SUPERADO!':'PERDISTE (NIVEL '+lvl+')';
+   const bon=w0?XP_WIN:XP_LOSS,l0=plv();prof.xp=(prof.xp||0)+bon;const l1=plv();
+   $('exp').textContent=pre+' · +'+bon+' XP'+(l1>l0?' · ¡SUBISTE A NIVEL '+l1+'!':'');
+   if(l1>l0)setTimeout(()=>SFX.hard(),700);
+   if(w0){prof.w++;prof.best=Math.max(prof.best,lvl);if(lvl<100)$('bnext').classList.remove('hide')}
+   else{prof.l++;vib(400)}
+   saveP();showP();
+  }
+  (w0||two?SFX.win:SFX.lose)();
+  $('end').classList.remove('hide')}
+
+ /* ya no se gana al llegar a 11: solo termina por tiempo */
+ point=function(w){
+  sc[w]++;updScore();SFX.point();
+  burst(gp,w?30:770,B.y,30,[w?T.b:T.a],300);
+  if(w===1&&!two)vib(150);
+  if(TL.sudden&&sc[0]!==sc[1]){endMatch('gold');return}
+  serve(w?-1:1)};
+
+ /* cuenta regresiva (solo corre jugando y se detiene en pausa) */
+ const _up=update;
+ update=function(dt){
+  if(TL.on&&mode==='play'){
+   el.style.display='block';
+   if(!TL.sudden){
+    TL.t-=dt;
+    if(TL.t<=0){
+     TL.t=0;
+     if(sc[0]!==sc[1]){endMatch('time');return}
+     TL.sudden=true;gtx.push({s:'⚡ PUNTO DE ORO!',l:2,c:'#ffd400'});SFX.hard();
+    }
+   }
+   paint();
+  }
+  _up(dt)};
+
+ /* reinicia el reloj en cada partida nueva */
+ const _ng=newGame;
+ newGame=function(t){_ng(t);TL.t=TLIM;TL.sudden=false;TL.on=true;paint();el.style.display='block'};
+
+ /* oculta el reloj al volver al menú o rendirse */
+ const _tm=toMenu;
+ toMenu=function(){TL.on=false;el.style.display='none';_tm()};
+})();
+
 
 </script>
 
