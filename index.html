@@ -133,6 +133,11 @@ h1{font-size:clamp(24px,7vw,40px);letter-spacing:4px;text-align:center;text-shad
 .nd.cu{background:linear-gradient(90deg,var(--a),var(--b));border-color:#fff;animation:pu 1.4s ease-in-out infinite}
 .nd.ev{width:74px;height:74px;font-size:22px;border-color:#ffd400;box-shadow:0 0 22px #ffd400,inset 0 0 12px #ffd40066}
 .nd .evb{position:absolute;left:50%;top:-18px;transform:translateX(-50%);font-size:22px;font-style:normal;filter:drop-shadow(0 0 6px #ffd400)}
+
+/* CAMBIO 3: VOLVER y título siempre visibles en NIVELES */
+#lvBack{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:10px;z-index:25;min-width:0;padding:10px 16px;font-size:15px;box-shadow:0 0 18px rgba(var(--bb),.7)}
+#lvs .box{padding-top:62px}
+#lvs h1{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:0;right:0;z-index:24;pointer-events:none;font-size:clamp(20px,6vw,30px)}
 </style></head><body>
 <canvas id="c"></canvas>
 
@@ -485,7 +490,7 @@ const SFX={
  deny:()=>{tone(180,.14,'square',2,90);setTimeout(()=>tone(150,.2,'square',2,70),120)},
  ping:()=>tone(1500,.12,'triangle',1,900),pong:()=>tone(700,.14,'triangle',1,400),bounce:()=>tone(300,.07,'sine',.8,150),
  whoosh:()=>tone(100,1.2,'sawtooth',.25,1200),
- thump:()=>{tone(90,.4,'sine',.7,45)},                       // golpe suave en cada letra (no tapa la voz)
+ thump:()=>{tone(90,.4,'sine',.7,45)},
  impact:()=>{tone(70,.9,'sawtooth',.6,25);tone(1400,.6,'sine',.3,150)},
  turbo:()=>tone(300,.35,'square',.5,1600),
  point:()=>{tone(523,.15,'square',.4);setTimeout(()=>tone(784,.2,'square',.4),130)},
@@ -517,8 +522,7 @@ function setMusic(m){mMode=m}
 document.addEventListener('visibilitychange',()=>{if(!AC)return;if(document.hidden){AC.suspend();try{speechSynthesis.cancel()}catch(e){}}else AC.resume()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='play'&&!paused)openGM()});
 
-/* ---- VOZ DE HOMBRE EN INGLÉS (usa las voces de tu teléfono) ----
-   Busca voces masculinas y las pone primero. En Ajustes puedes cambiar de voz. */
+/* ---- VOZ DE HOMBRE EN INGLÉS (usa las voces de tu teléfono) ---- */
 let VL=[];
 const MALE=/en[-_]us[-_]x[-_](iol|iom|tpd)|en[-_]gb[-_]x[-_](rjs|gbb|gbd)|\bmale\b|david|daniel|guy|mark|james|alex|fred|george|ryan|thomas|rjs/i;
 function loadVoices(){if(!window.speechSynthesis)return;
@@ -637,10 +641,7 @@ function LP(L){
  if(L<=1)return{base:350,boost:1.15};
  if(L<=20){const k=(L-2)/18;return{base:430+k*50,boost:1.2}}
  const k=(L-20)/80;return{base:480+k*80,boost:1.2+k*.15}}
-/* ---- PORCENTAJE DEL BOT ----
-   Probabilidad de que el bot gane la partida (a 11, con diferencia de 2):
-   1–5: 35–40% · 6–10: 41–45% · 11–20: 46–52% · 21–30: 53–59% · 31–40: 60–65% · 41–50: 66–71% · 51–60: 72–77% · 61–70: 78–82% · 71–80: 83–87% · 81–90: 88–92% · 91–100: 93–97%.
-   En cada punto el bot juega "concentrado" (casi perfecto) con probabilidad q, o "normal" (se le puede ganar). */
+/* ---- PORCENTAJE DEL BOT ---- */
 function mw(p){const q=1-p,tie=p*p/(p*p+q*q),M={};
  const f=(a,b)=>{if(a>=11&&a-b>=2)return 1;if(b>=11&&b-a>=2)return 0;
   if(a>=10&&b>=10){const d=a-b;return d===0?tie:d>0?p+q*tie:p*tie}
@@ -759,7 +760,8 @@ $('bStart').onclick=()=>{au();unlockSpeech();musicStart();$('start').classList.a
 $('nPlay').onclick=()=>{au();SFX.click();newGame(false)};
 $('n2p').onclick=()=>{au();SFX.click();newGame(true)};
 $('nLv').onclick=()=>{SFX.click();openLevels()};
-$('nOn').onclick=()=>{au();SFX.click();toast('🌐 MODO ONLINE · MÁS ADELANTE')};
+/* CAMBIO 2: botón ONLINE conectado al servidor */
+$('nOn').onclick=()=>{au();SFX.click();if(!fb){toast('Sin conexión con el servidor');return}if(!ME){openAcc();return}toast('✔ Conectado como '+dn()+' · ID '+prof.id)};
 $('nFr').onclick=()=>{au();SFX.click();toast('🔍 BUSCAR AMIGOS · MÁS ADELANTE')};
 $('lvBack').onclick=()=>{SFX.click();closeLevels()};
 $('ba').onclick=()=>{au();SFX.click();newGame(two)};
@@ -772,7 +774,7 @@ addEventListener('keyup',e=>keys[e.code]=false);
 const PM={};
 const lgc=e=>{const lx=por?CH-e.clientY:e.clientX,ly=por?e.clientX:e.clientY;return[(lx-OX)/S,evOn('inv')?H-(ly-OY)/S:(ly-OY)/S]};
 cv.addEventListener('pointerdown',e=>{
- if(mode==='intro'){if(I&&I.t>10.2){au();SFX.click();endIntro()}return}   // entra SOLO cuando el usuario toca
+ if(mode==='intro'){if(I&&I.t>10.2){au();SFX.click();endIntro()}return}
  if(mode!=='play'||paused)return;
  const[lx,ly]=lgc(e),i=two&&lx>W/2?1:0;PM[e.pointerId]=i;P[i].ty=clamp(ly,P[i].h/2,H-P[i].h/2)});
 cv.addEventListener('pointermove',e=>{const i=PM[e.pointerId];if(i==null||mode!=='play'||paused)return;
@@ -780,8 +782,8 @@ cv.addEventListener('pointermove',e=>{const i=PM[e.pointerId];if(i==null||mode!=
 ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,e=>{delete PM[e.pointerId]}));
 
 /* ===== AGREGADO 2/2: nombres 1vs1 · cuenta con correo · amigos por ID ===== */
-/* ⬇ Pega aquí tu firebaseConfig (Firebase → Configuración del proyecto → tu app web) */
-const FB_CFG={apiKey:'',authDomain:'',projectId:'',appId:''};
+/* CAMBIO 1: tus claves de Firebase */
+const FB_CFG={apiKey:'AIzaSyCPS88W7eiqMcENuVV6Ab6cHNFOaXhxHiM',authDomain:'dmr-ping-pong.firebaseapp.com',projectId:'dmr-ping-pong',appId:'1:289657281725:web:e43124d43b9d9505616bd4'};
 
 let fb=null,FA,FS,ME=null,guest=false,authReady=null,SY=false,NM=['',''],acCreate=false;
 const _sv=saveP,_pt=point,_ei=endIntro;
@@ -804,7 +806,7 @@ async function fbInit(){
  authReady=new Promise(r=>FA.onAuthStateChanged(fb.auth,async u=>{ME=u;SY=false;if(u)await loadMe();r()}))}
 const pushNow=()=>FS.setDoc(FS.doc(fb.db,'players',prof.id),{uid:ME.uid,id:prof.id,name:prof.name,av:effAv(),level:plv(),stars:prof.stars||0,xp:prof.xp||0,best:prof.best||0,w:prof.w||0,l:prof.l||0,card:prof.card||0,nameSet:!!prof.nameSet},{merge:true});
 function cloudSync(){if(!ME||!fb||!SY)return;clearTimeout(cloudSync.t);cloudSync.t=setTimeout(()=>pushNow().catch(()=>{}),800)}
-saveP=function(){_sv();cloudSync()};   // cada vez que se guarda el perfil, también se sube a tu cuenta
+saveP=function(){_sv();cloudSync()};
 async function loadMe(){try{
  const b=await FS.getDoc(FS.doc(fb.db,'byUid',ME.uid));if(!b.exists())return;
  const s=await FS.getDoc(FS.doc(fb.db,'players',b.data().id));if(!s.exists())return;const d=s.data();
@@ -826,7 +828,7 @@ async function doAuth(){
  try{
   if(acCreate){
    ME=(await FA.createUserWithEmailAndPassword(fb.auth,em,pw)).user;
-   while((await FS.getDoc(FS.doc(fb.db,'players',prof.id))).exists())prof.id=genId();   // el ID nunca se repite
+   while((await FS.getDoc(FS.doc(fb.db,'players',prof.id))).exists())prof.id=genId();
    prof.name=nm;await FS.setDoc(FS.doc(fb.db,'byUid',ME.uid),{id:prof.id});await pushNow();SY=true;_sv();showP()
   }else{ME=(await FA.signInWithEmailAndPassword(fb.auth,em,pw)).user;await loadMe()}
   $('acc').classList.add('hide');SFX.point();toast('✔ Bienvenido '+dn())
