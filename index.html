@@ -1438,7 +1438,8 @@ $('nRk').onclick=async()=>{au();SFX.click();if(!fb||!ME){toast('Entra con tu cue
  }catch(e){L.textContent=errEs(e)}};
 $('rkX').onclick=()=>{SFX.click();sh('rnk',0)};
 updPC();
-
+</script>
+<script>
 /* ===== D.M.R v8: PongCoins, tienda, misiones, logros, clasificación ===== */
 document.head.insertAdjacentHTML('beforeend',`<style>
 .coin{background:#070b22cc;border:2px solid #ffd400;border-radius:30px;padding:6px 12px;font-weight:900;font-size:15px;color:#ffd400;box-shadow:0 0 12px #ffd40055;flex:none}
@@ -1550,5 +1551,94 @@ $('nRk').onclick=async()=>{au();SFX.click();if(!fb||!ME){toast('Entra con tu cue
  }catch(e){L.textContent=errEs(e)}};
 $('rkX').onclick=()=>{SFX.click();sh('rnk',0)};
 updPC();
+
+/* ===== D.M.R v9: dar verificado, ajustes extra, menú limpio, mesa, cuenta 3-2-1 ===== */
+document.head.insertAdjacentHTML('beforeend',`<style>
+#m2{gap:10px!important}
+.big{padding:12px 10px!important;font-size:22px!important;letter-spacing:4px!important;border-radius:40px!important}
+.big small{font-size:10px!important}
+.sec{padding:11px 4px!important;font-size:12px!important;border-radius:16px!important;box-shadow:0 0 8px rgba(var(--bb),.35)!important}
+#lg{width:min(22vw,11vh,96px)!important}
+.dmr{font-size:clamp(34px,11vw,52px)!important}
+.pp{font-size:clamp(11px,3.4vw,16px)!important}
+.pf{max-width:46%}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%}
+.tiles .sec{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px!important;letter-spacing:0!important;padding:8px 2px!important}
+.ti{font-size:20px}
+#nAdm{padding:8px!important;font-size:11px!important;opacity:.85}
+</style>`);
+
+/* 1) MENÚ DE INICIO: botones más chicos y en cuadritos */
+const r2=$('nOn').parentElement;r2.appendChild($('nSh'));
+const tl=document.createElement('div');tl.className='tiles';tl.append($('nFr'),$('nMs'),$('nAc'),$('nRk'));$('nAdm').before(tl);
+[['nFr','👥','AMIGOS'],['nMs','📅','MISIONES'],['nAc','🏆','LOGROS'],['nRk','🥇','RANKING']].forEach(([i,e,t])=>$(i).innerHTML='<span class="ti">'+e+'</span>'+t);
+$('nSh').textContent='🛒 TIENDA';
+$('m2').querySelectorAll(':scope>.row2').forEach(r=>{if(!r.children.length)r.remove()});
+
+/* 2) VERIFICADO: todo desbloqueado para quien lo tenga */
+let VER=false;
+async function chkVer(){if(!ME||!fb||!SY){VER=false;return}
+ try{const d=await pget(prof.id),v=!!(d&&d.ver)||isAdm();if(v!==VER){VER=v;showP()}}catch(e){}}
+setInterval(chkVer,15000);const vk=setInterval(()=>{if(SY){chkVer();clearInterval(vk)}},1000);
+const _pv=plv;plv=function(){return VER?100:_pv()};
+const _bp9=buildPath;buildPath=function(){const b=prof.best;if(VER)prof.best=100;try{_bp9()}finally{prof.best=b}};
+const _lt9=levelTap;levelTap=function(i){const b=prof.best;if(VER)prof.best=100;try{_lt9(i)}finally{prof.best=b}};
+const _sp9=showP;showP=function(){_sp9();if(VER&&!isAdm())$('pnT').innerHTML=esc(dn())+' '+VF};
+const _rs9=rShop;rShop=function(){const v=prof.inv;if(VER)prof.inv=IT.map(i=>i[1]);try{_rs9()}finally{prof.inv=v}};
+const _by9=buy;buy=function(id){const v=prof.inv;if(VER)prof.inv=IT.map(i=>i[1]);try{_by9(id)}finally{prof.inv=v}};
+
+/* 3) PANEL ADMIN: botón DAR VERIFICADO */
+$('admB3').insertAdjacentHTML('afterend','<button class="btn" id="admB4">✔ DAR VERIFICADO</button>');
+$('admBan').insertAdjacentHTML('afterend','<div id="admVer" class="hide" style="display:flex;flex-direction:column;gap:10px"><input id="vrId" class="in" inputmode="numeric" maxlength="8" placeholder="ID del jugador (8 números)"><button class="btn" id="vrGo">✔ DAR VERIFICADO</button><div class="pst">VERIFICADOS</div><div id="vrL" style="display:flex;flex-direction:column;gap:8px"></div></div>');
+admView=function(n){AV=n;sh('admMenu',n==0);sh('admV',n>0);sh('admRep',n==1);sh('admById',n==2);sh('admBan',n==3);sh('admVer',n==4);
+ $('admT').textContent=['','⚠ REPORTADOS','⛔ BANEAR POR ID','🚫 BANEADOS','✔ VERIFICADOS'][n];
+ if(n==0)cntRep();if(n==1)loadRep();if(n==3)loadBans();if(n==4)loadVer()};
+async function setVer(id,v){try{await FS.setDoc(FS.doc(fb.db,'players',id),{ver:v},{merge:true});SFX.point();toast(v?'✔ Verificado entregado':'Verificado quitado');loadVer()}catch(e){toast(errEs(e))}}
+async function loadVer(){const L=$('vrL');L.innerHTML='<div class="pst">…</div>';
+ try{const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.where('ver','==',true),FS.limit(50))),a=[];s.forEach(d=>a.push(d.data()));
+  L.innerHTML=a.map(d=>'<div class="rpc">'+adT(d,'✔ verificado')+(d.id===prof.id?'':'<button class="tg mn" data-i="'+esc(d.id)+'" data-n="'+esc(d.name)+'">QUITAR VERIFICADO</button>')+'</div>').join('')||'<div class="pst">Nadie verificado</div>';
+  L.querySelectorAll('button').forEach(b=>b.onclick=()=>{SFX.click();modal('QUITAR VERIFICADO','¿Quitarle el verificado a <b>'+esc(b.dataset.n)+'</b>?',[['SÍ, QUITAR',()=>setVer(b.dataset.i,false)],['CANCELAR',null,'tg']])})
+ }catch(e){L.textContent=errEs(e)}}
+$('admB4').onclick=()=>{SFX.click();$('vrId').value='';admView(4)};
+$('vrGo').onclick=async()=>{SFX.click();const id=$('vrId').value.trim();
+ if(!/^\d{8}$/.test(id)){toast('Escribe un ID de 8 números');return}
+ try{const d=await pget(id);if(!d){toast('No existe ese ID');return}
+  modal('✔ VERIFICAR','¿Dar el verificado dorado a <b>'+esc(d.name)+'</b>?<br><small>Tendrá todo desbloqueado.</small>',[['SÍ, VERIFICAR',()=>setVer(id,true)],['CANCELAR',null,'tg']])}catch(e){toast(errEs(e))}};
+
+/* 4) AJUSTES EXTRA */
+Object.assign(SET,{q:SET.q??(devicePixelRatio>=2?2:1),red:!!SET.red,spd:SET.spd||1,sen:SET.sen||1});
+$('sClose').insertAdjacentHTML('beforebegin',`
+ <div class="r"><span>🖼 Calidad</span><button id="sQ" class="tg"></button></div>
+ <div class="r"><span>⚡ Reducir efectos</span><button id="sRd" class="tg"></button></div>
+ <div class="r"><span>🎯 Sensibilidad</span><button id="sSe" class="tg"></button></div>
+ <div class="r"><span>⏩ Velocidad</span><button id="sSp" class="tg"></button></div>
+ <div class="r"><span>⛶ Pantalla completa</span><button id="sFs" class="tg">ACTIVAR</button></div>
+ <button class="tg" id="sRs">↺ RESTABLECER AJUSTES</button>`);
+const QN=['BAJA','MEDIA','ALTA'],SPD=[.85,1,1.2],SPN=['LENTA','NORMAL','RÁPIDA'],SEN=[1,1.6,2.4],SENN=['NORMAL','ALTA','MÁXIMA'];
+function applyQ(){D=[1,1.5,2][SET.q];cv.width=CW*D;cv.height=CH*D}
+function rf9(){$('sQ').textContent=QN[SET.q];$('sRd').textContent=SET.red?'ON':'OFF';$('sSe').textContent=SENN[SEN.indexOf(SET.sen)]||'NORMAL';$('sSp').textContent=SPN[SPD.indexOf(SET.spd)]||'NORMAL'}
+$('sQ').onclick=()=>{SET.q=(SET.q+1)%3;applyQ();saveS();rf9();SFX.click()};
+$('sRd').onclick=()=>{SET.red=!SET.red;saveS();rf9();SFX.click()};
+$('sSe').onclick=()=>{SET.sen=SEN[(SEN.indexOf(SET.sen)+1)%3];saveS();rf9();SFX.click()};
+$('sSp').onclick=()=>{SET.spd=SPD[(SPD.indexOf(SET.spd)+1)%3];saveS();rf9();SFX.click()};
+$('sFs').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+$('sRs').onclick=()=>{SFX.click();modal('RESTABLECER','¿Volver los ajustes a su valor original?',[['SÍ',()=>{Object.assign(SET,{snd:true,mus:55,sfx:80,br:100,th:0,vib:true,voice:-1,q:2,red:false,spd:1,sen:1});saveS();applyTheme();applyBr();setVols();applyQ();refreshSet();rf9()}],['CANCELAR',null,'tg']])};
+$('gear').addEventListener('click',rf9);addEventListener('resize',applyQ);applyQ();
+const _bu9=burst;burst=function(a,px,py,n,c,s){_bu9(a,px,py,SET.red?Math.max(2,n>>2):n,c,s)};
+
+/* 5) PARTIDA: cuenta 3-2-1, velocidad, sensibilidad y mesa */
+let CDT=0,CDL=0;
+const _ng9=newGame;newGame=function(t){_ng9(t);CDT=3.2;CDL=4};
+const _up9=update;update=function(dt){
+ if(CDT>0){CDT-=dt;const c=Math.ceil(CDT);if(c!==CDL){CDL=c;if(c>0&&c<4)SFX.click()}return}
+ _up9(dt*SET.spd);
+ if(SET.sen>1&&P)P.forEach((p,i)=>{if(i===1&&!two)return;p.y+=(p.ty-p.y)*Math.min(1,dt*18*(SET.sen-1));p.y=clamp(p.y,p.h/2,H-p.h/2)})};
+const _dg9=drawGame;drawGame=function(dt){_dg9(dt);if(CDT>0)txt(CDT>3?'3':String(Math.ceil(CDT)),400,250,150,'#fff',1,T.b)};
+const _bb9=bakeBG;bakeBG=function(){_bb9();if(!BGC)return;const g=BGC.getContext('2d');g.save();
+ const gr=g.createLinearGradient(0,0,0,500);gr.addColorStop(0,'rgba(20,70,200,.30)');gr.addColorStop(1,'rgba(4,10,60,.45)');
+ g.fillStyle=gr;g.fillRect(14,14,772,472);
+ g.strokeStyle='#fff';g.globalAlpha=.85;g.lineWidth=4;g.shadowColor=T.b;g.shadowBlur=18;g.strokeRect(14,14,772,472);
+ g.shadowBlur=0;g.globalAlpha=.3;g.lineWidth=2;g.beginPath();g.moveTo(14,250);g.lineTo(786,250);g.stroke();g.restore()};
+rf9();
 </script>
 </body></html>
