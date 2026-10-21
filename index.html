@@ -216,6 +216,49 @@ h1{font-size:clamp(24px,7vw,40px);letter-spacing:4px;text-align:center;text-shad
 <!-- VENTANA FLOTANTE -->
 <div id="md" class="ov hide"><div class="panel" style="text-align:center"><h2 id="mdT"></h2><div id="mdB"></div><div id="mdBt" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div></div></div>
 
+<!-- ===== AGREGADO 1/2: pantallas nuevas (nombres 1vs1, cuenta con correo, amigos) ===== -->
+<style>
+.in{width:100%;padding:12px 14px;border-radius:12px;border:2px solid var(--b);background:#0a1030;color:#fff;font-size:16px;user-select:text;-webkit-user-select:text;touch-action:auto}
+#nm,#fr,#acc{background:rgba(0,0,10,.8);z-index:20}#acc{z-index:30}
+</style>
+
+<!-- NOMBRES (2 JUGADORES) -->
+<div id="nm" class="ov hide"><div class="panel">
+ <h2>👥 2 JUGADORES</h2>
+ <input id="n1" class="in" maxlength="8" placeholder="Nombre del jugador 1" autocomplete="off">
+ <input id="n2" class="in" maxlength="8" placeholder="Nombre del jugador 2" autocomplete="off">
+ <button class="btn" id="nmGo">▶ EMPEZAR</button>
+ <button class="tg" id="nmX">CANCELAR</button>
+</div></div>
+
+<!-- CUENTA (correo) -->
+<div id="acc" class="ov hide"><div class="panel">
+ <h2>🌐 TU CUENTA</h2>
+ <input id="aNm" class="in hide" maxlength="12" placeholder="Nombre de jugador" autocomplete="off">
+ <input id="aEm" class="in" type="email" placeholder="Correo electrónico" autocomplete="email" autocapitalize="off">
+ <input id="aPw" class="in" type="password" placeholder="Contraseña (mínimo 6)" autocomplete="current-password">
+ <div id="aMsg" class="pst" style="min-height:16px"></div>
+ <button class="btn" id="aIn">ENTRAR</button>
+ <button class="tg" id="aTg">CREAR CUENTA NUEVA</button>
+ <button class="tg" id="aGu">ENTRAR COMO INVITADO</button>
+</div></div>
+
+<!-- AMIGOS (buscar por ID) -->
+<div id="fr" class="ov hide"><div class="panel">
+ <h2>🔍 AMIGOS</h2>
+ <div id="frOff"><div class="pst" style="margin-bottom:12px">Necesitas una cuenta para buscar amigos</div><button class="btn" id="frAcc">CREAR CUENTA / ENTRAR</button></div>
+ <div id="frOn" class="hide" style="display:flex;flex-direction:column;gap:12px">
+  <div class="idrow"><span>TU ID <b id="frId"></b></span><button id="frCp" class="sm">📋</button></div>
+  <input id="frIn" class="in" inputmode="numeric" maxlength="8" placeholder="ID del jugador (8 números)" autocomplete="off">
+  <button class="btn" id="frGo">🔍 BUSCAR</button>
+  <div id="frRes"></div>
+  <div class="pst">MIS AMIGOS</div>
+  <div id="frList" style="display:flex;flex-direction:column;gap:8px"></div>
+  <button class="tg" id="frOut">CERRAR SESIÓN</button>
+ </div>
+ <button class="btn" id="frClose">VOLVER</button>
+</div></div>
+
 <div id="err"></div>
 <div id="toast"></div>
 
@@ -701,5 +744,89 @@ cv.addEventListener('pointerdown',e=>{
 cv.addEventListener('pointermove',e=>{const i=PM[e.pointerId];if(i==null||mode!=='play'||paused)return;
  const ly=lgc(e)[1];P[i].ty=clamp(ly,P[i].h/2,H-P[i].h/2)});
 ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,e=>{delete PM[e.pointerId]}));
+
+/* ===== AGREGADO 2/2: nombres 1vs1 · cuenta con correo · amigos por ID ===== */
+/* ⬇ Pega aquí tu firebaseConfig (Firebase → Configuración del proyecto → tu app web) */
+const FB_CFG={apiKey:'',authDomain:'',projectId:'',appId:''};
+
+let fb=null,FA,FS,ME=null,guest=false,authReady=null,SY=false,NM=['',''],acCreate=false;
+const _sv=saveP,_pt=point,_ei=endIntro;
+const errEs=e=>({'auth/email-already-in-use':'Ese correo ya tiene cuenta','auth/invalid-credential':'Correo o contraseña incorrectos','auth/invalid-email':'Correo no válido','auth/weak-password':'La contraseña necesita 6 o más caracteres','auth/network-request-failed':'Sin internet','permission-denied':'Sin permiso (revisa las reglas de Firestore)'}[e.code]||'Error: '+(e.code||e.message));
+
+/* ---------- 2 JUGADORES: nombres ---------- */
+function openNames(){$('n1').value=NM[0]||dn().slice(0,8);$('n2').value=NM[1]||'';$('nm').classList.remove('hide')}
+$('n2p').onclick=()=>{au();SFX.click();openNames()};
+$('nmGo').onclick=()=>{au();SFX.click();NM=[$('n1').value.trim().slice(0,8)||'J1',$('n2').value.trim().slice(0,8)||'J2'];$('nm').classList.add('hide');newGame(true)};
+$('nmX').onclick=()=>{SFX.click();$('nm').classList.add('hide')};
+updScore=function(){const a=NM[0]||'J1',b=NM[1]||'J2';$('sc').textContent=two?a+' '+sc[0]+' - '+sc[1]+' '+b:sc[0]+' - '+sc[1]};
+point=function(w){_pt(w);if(two&&mode==='over')$('et').textContent='¡GANA '+(sc[0]>sc[1]?(NM[0]||'J1'):(NM[1]||'J2'))+'!'};
+
+/* ---------- Servidor (Firebase) ---------- */
+async function fbInit(){
+ if(fb||!FB_CFG.apiKey)return;
+ const V='https://www.gstatic.com/firebasejs/10.12.2/';
+ const[A,B,C]=await Promise.all([import(V+'firebase-app.js'),import(V+'firebase-auth.js'),import(V+'firebase-firestore.js')]);
+ FA=B;FS=C;const app=A.initializeApp(FB_CFG);fb={auth:FA.getAuth(app),db:FS.getFirestore(app)};
+ authReady=new Promise(r=>FA.onAuthStateChanged(fb.auth,async u=>{ME=u;SY=false;if(u)await loadMe();r()}))}
+const pushNow=()=>FS.setDoc(FS.doc(fb.db,'players',prof.id),{uid:ME.uid,id:prof.id,name:prof.name,av:effAv(),level:plv(),stars:prof.stars||0,xp:prof.xp||0,best:prof.best||0,w:prof.w||0,l:prof.l||0,card:prof.card||0,nameSet:!!prof.nameSet},{merge:true});
+function cloudSync(){if(!ME||!fb||!SY)return;clearTimeout(cloudSync.t);cloudSync.t=setTimeout(()=>pushNow().catch(()=>{}),800)}
+saveP=function(){_sv();cloudSync()};   // cada vez que se guarda el perfil, también se sube a tu cuenta
+async function loadMe(){try{
+ const b=await FS.getDoc(FS.doc(fb.db,'byUid',ME.uid));if(!b.exists())return;
+ const s=await FS.getDoc(FS.doc(fb.db,'players',b.data().id));if(!s.exists())return;const d=s.data();
+ Object.assign(prof,{id:d.id,name:d.name,av:d.av||0,xp:d.xp||0,best:d.best||0,w:d.w||0,l:d.l||0,stars:d.stars||0,card:d.card||0,nameSet:!!d.nameSet});
+ SY=true;_sv();showP()}catch(e){}}
+
+/* ---------- Pantalla de correo (después de la intro) ---------- */
+const msgA=m=>$('aMsg').textContent=m;
+function acMode(c){acCreate=c;$('aNm').classList.toggle('hide',!c);$('aIn').textContent=c?'CREAR CUENTA':'ENTRAR';$('aTg').textContent=c?'YA TENGO CUENTA':'CREAR CUENTA NUEVA';msgA('')}
+function openAcc(){acMode(false);if(!fb)msgA('⚠ Falta configurar Firebase: por ahora entra como invitado');$('acc').classList.remove('hide')}
+async function gate(){if(authReady)await Promise.race([authReady,new Promise(r=>setTimeout(r,2500))]);if(!ME&&!guest)openAcc()}
+endIntro=function(){_ei();gate()};
+async function doAuth(){
+ const em=$('aEm').value.trim(),pw=$('aPw').value,nm=$('aNm').value.trim().slice(0,12);
+ if(!fb){msgA('⚠ Falta configurar Firebase');return}
+ if(!em||pw.length<6){msgA('Escribe tu correo y una contraseña de 6 o más caracteres');return}
+ if(acCreate&&!nm){msgA('Escribe tu nombre de jugador');return}
+ msgA('Un momento…');
+ try{
+  if(acCreate){
+   ME=(await FA.createUserWithEmailAndPassword(fb.auth,em,pw)).user;
+   while((await FS.getDoc(FS.doc(fb.db,'players',prof.id))).exists())prof.id=genId();   // el ID nunca se repite
+   prof.name=nm;await FS.setDoc(FS.doc(fb.db,'byUid',ME.uid),{id:prof.id});await pushNow();SY=true;_sv();showP()
+  }else{ME=(await FA.signInWithEmailAndPassword(fb.auth,em,pw)).user;await loadMe()}
+  $('acc').classList.add('hide');SFX.point();toast('✔ Bienvenido '+dn())
+ }catch(e){msgA(errEs(e))}}
+$('aIn').onclick=doAuth;$('aTg').onclick=()=>acMode(!acCreate);
+$('aGu').onclick=()=>{guest=true;SFX.click();$('acc').classList.add('hide')};
+$('acB').onclick=()=>{au();SFX.click();if(ME)toast('✔ '+ME.email);else{$('pfp').classList.add('hide');openAcc()}};
+
+/* ---------- Amigos: buscar por ID ---------- */
+const row=(d,b)=>`<div class="idrow" style="gap:8px"><div class="av" style='background-image:url("${AVS[d.av||0]||AVS[0]}")'></div><span style="flex:1;text-align:left"><b>${esc(d.name)}</b><br><small>NIVEL ${d.level||1} · ID ${esc(d.id)}</small></span>${b}</div>`;
+function openFriends(){$('fr').classList.remove('hide');$('frOn').classList.toggle('hide',!ME);$('frOff').classList.toggle('hide',!!ME);
+ if(ME){$('frId').textContent=prof.id;$('frRes').innerHTML='';loadFriends()}}
+async function loadFriends(){const L=$('frList');L.innerHTML='<div class="pst">…</div>';
+ try{const me=await FS.getDoc(FS.doc(fb.db,'players',prof.id)),ids=(me.data()||{}).friends||[];
+  const ds=await Promise.all(ids.map(i=>FS.getDoc(FS.doc(fb.db,'players',i))));
+  L.innerHTML=ds.filter(s=>s.exists()).map(s=>row(s.data(),'')).join('')||'<div class="pst">Aún no tienes amigos agregados</div>'}
+ catch(e){L.textContent=errEs(e)}}
+async function addFriend(id){try{await FS.setDoc(FS.doc(fb.db,'players',prof.id),{friends:FS.arrayUnion(id)},{merge:true});
+ SFX.point();toast('✔ AMIGO AGREGADO');$('frRes').innerHTML='';$('frIn').value='';loadFriends()}catch(e){toast(errEs(e))}}
+$('nFr').onclick=()=>{au();SFX.click();openFriends()};
+$('frAcc').onclick=()=>{SFX.click();$('fr').classList.add('hide');openAcc()};
+$('frClose').onclick=()=>{SFX.click();$('fr').classList.add('hide')};
+$('frCp').onclick=()=>{SFX.click();try{navigator.clipboard.writeText(prof.id).then(()=>toast('📋 ID COPIADO'),()=>toast('ID: '+prof.id))}catch(e){toast('ID: '+prof.id)}};
+$('frGo').onclick=async()=>{SFX.click();const id=$('frIn').value.trim(),R=$('frRes');
+ if(!/^\d{8}$/.test(id)){R.innerHTML='<div class="pst">Escribe un ID de 8 números</div>';return}
+ if(id===prof.id){R.innerHTML='<div class="pst">Ese eres tú 😄</div>';return}
+ try{const s=await FS.getDoc(FS.doc(fb.db,'players',id));
+  if(!s.exists()){R.innerHTML='<div class="pst">No existe ningún jugador con ese ID</div>';return}
+  R.innerHTML=row(s.data(),'<button id="frAdd" class="tg" style="min-width:0">AGREGAR</button>');
+  $('frAdd').onclick=()=>addFriend(id)}catch(e){R.innerHTML='<div class="pst">'+esc(errEs(e))+'</div>'}};
+$('frOut').onclick=async()=>{try{await FA.signOut(fb.auth)}catch(e){}
+ ME=null;SY=false;guest=false;Object.assign(prof,{name:'PLAYER',w:0,l:0,best:0,nameSet:false,xp:0,av:0,photo:'',stars:0,card:0,id:genId()});_sv();showP();
+ $('fr').classList.add('hide');openAcc()};
+
+fbInit().catch(e=>{fb=null;console.log(e)});
 </script>
 </body></html>
