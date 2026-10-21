@@ -1002,5 +1002,187 @@ $('onInv').onclick=async()=>{SFX.click();if(!ME){toast('Entra con tu cuenta prim
    try{await FS.setDoc(FS.doc(fb.db,'invites',prof.id+'_'+b.dataset.i),{from:prof.id,name:prof.name,to:b.dataset.i,t:Date.now()});toast('📨 INVITACIÓN ENVIADA')}catch(e){toast(errEs(e))}})
  }catch(e){L.textContent=errEs(e)}};
 $('ivX').onclick=()=>{sh('iv',0);sh('on2',1)};
+
+/* ===== D.M.R v5: panel admin, reportes y baneos ===== */
+document.head.insertAdjacentHTML('beforeend',`<style>
+#adm{background:rgba(0,0,10,.85);z-index:44}#bp{background:rgba(0,0,10,.8);z-index:48}
+#bn{background:rgba(0,0,10,.97);z-index:99}
+.bg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+</style>`);
+document.body.insertAdjacentHTML('beforeend',`
+<div id="adm" class="ov hide"><div class="panel">
+ <h2>🛡 PANEL ADMIN</h2>
+ <div class="pst">REPORTADOS</div>
+ <div id="admRep" style="display:flex;flex-direction:column;gap:8px"></div>
+ <div class="pst">BANEAR POR ID</div>
+ <input id="admId" class="in" inputmode="numeric" maxlength="8" placeholder="ID del jugador (8 números)">
+ <button class="tg" id="admGo">BANEAR ESTE ID</button>
+ <div class="pst">BANEADOS</div>
+ <div id="admBan" style="display:flex;flex-direction:column;gap:8px"></div>
+ <button class="btn" id="admX">VOLVER</button>
+</div></div>
+<div id="bp" class="ov hide"><div class="panel">
+ <h2>⛔ BANEAR</h2>
+ <div id="bpWho" class="pst"></div>
+ <div class="bg" id="bpBt"></div>
+ <button class="tg" id="bpX">CANCELAR</button>
+</div></div>
+<div id="bn" class="ov hide"><div class="panel">
+ <h2>🚫 CUENTA SUSPENDIDA</h2>
+ <div id="bnMsg" class="pst" style="font-size:14px;line-height:1.6"></div>
+ <button class="btn" id="bnOut">CERRAR SESIÓN</button>
+</div></div>`);
+$('m2').insertAdjacentHTML('beforeend','<button id="nAdm" class="sec hide" style="width:100%;flex:none">🛡 PANEL ADMIN</button>');
+setInterval(()=>sh('nAdm',isAdm()),1500);
+
+const fmtT=ms=>{const m=Math.max(1,Math.ceil(ms/60000));return m>=1440?Math.floor(m/1440)+' d '+Math.floor(m%1440/60)+' h':m>=60?Math.floor(m/60)+' h '+m%60+' min':m+' min'};
+const DUR=[['10 MIN',10],['1 HORA',60],['1 DÍA',1440],['7 DÍAS',10080],['30 DÍAS',43200],['PERMANENTE',0]];
+
+/* ---- si estás baneado, no puedes jugar ---- */
+async function checkBan(){if(!ME||!fb||!SY)return;
+ try{const s=await FS.getDoc(FS.doc(fb.db,'bans',prof.id)),b=s.exists()?s.data():null;
+  if(b&&(b.perm||b.until>Date.now())){paused=true;
+   $('bnMsg').innerHTML=b.perm?'Tu cuenta fue suspendida <b>permanentemente</b>.':'Tu cuenta está suspendida.<br>Tiempo restante: <b>'+fmtT(b.until-Date.now())+'</b>';sh('bn',1)}
+  else sh('bn',0)}catch(e){}}
+setInterval(checkBan,20000);const bk=setInterval(()=>{if(SY){checkBan();clearInterval(bk)}},1000);
+$('bnOut').onclick=()=>{sh('bn',0);$('frOut').onclick()};
+
+/* ---- panel admin ---- */
+const adT=(d,t)=>`<div class="idrow" style="gap:8px"><div class="av" style='background-image:url("${AVS[d.av||0]||AVS[0]}")'></div><span style="flex:1;text-align:left"><b>${esc(d.name)}</b>${d.ver?' '+VF:''}<br><small>ID ${esc(d.id)} · ${t}</small></span></div>`;
+async function loadAdm(){const R=$('admRep'),B=$('admBan');R.innerHTML=B.innerHTML='<div class="pst">…</div>';
+ try{const rs=await FS.getDocs(FS.query(FS.collection(fb.db,'reports'),FS.limit(300))),cnt={};
+  rs.forEach(d=>{const q=d.data();cnt[q.to]=(cnt[q.to]||0)+1});
+  const ids=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]),pl=await Promise.all(ids.map(pget));
+  R.innerHTML=ids.map((id,i)=>{const d=pl[i]||{id,name:'(sin perfil)'};
+   return '<div style="display:flex;flex-direction:column;gap:6px">'+adT(d,'⚠ '+cnt[id]+' reporte(s)')+'<div class="bg"><button class="tg mn" data-a="b" data-i="'+esc(id)+'" data-n="'+esc(d.name)+'">⛔ BANEAR</button><button class="tg mn" data-a="p" data-i="'+esc(id)+'">👤 PERFIL</button></div><button class="tg mn" data-a="x" data-i="'+esc(id)+'">DESCARTAR REPORTES</button></div>'}).join('')||'<div class="pst">Sin reportes</div>';
+  R.querySelectorAll('button').forEach(b=>b.onclick=()=>admAct(b.dataset.a,b.dataset.i,b.dataset.n));
+  const bs=await FS.getDocs(FS.collection(fb.db,'bans')),act=[];
+  bs.forEach(d=>{const b=d.data();if(b.perm||b.until>Date.now())act.push(b)});
+  B.innerHTML=act.map(b=>'<div style="display:flex;flex-direction:column;gap:6px">'+adT({id:b.id,name:b.name||'?'},b.perm?'PERMANENTE':'quedan '+fmtT(b.until-Date.now()))+'<button class="tg mn" data-i="'+esc(b.id)+'">✅ DESBANEAR</button></div>').join('')||'<div class="pst">Nadie baneado</div>';
+  B.querySelectorAll('button').forEach(b=>b.onclick=async()=>{SFX.click();try{await FS.deleteDoc(FS.doc(fb.db,'bans',b.dataset.i));toast('✅ Desbaneado');loadAdm()}catch(e){toast(errEs(e))}})
+ }catch(e){R.textContent=errEs(e);B.textContent=''}}
+async function admAct(a,id,nm){SFX.click();
+ if(a==='p')openPv(id);
+ else if(a==='b')askBan(id,nm);
+ else if(a==='x'){try{const s=await FS.getDocs(FS.query(FS.collection(fb.db,'reports'),FS.where('to','==',id)));await Promise.all(s.docs.map(d=>FS.deleteDoc(d.ref)));toast('Reportes descartados');loadAdm()}catch(e){toast(errEs(e))}}}
+function askBan(id,nm){if(id===prof.id){toast('No puedes banearte a ti mismo');return}
+ $('bpWho').textContent='Jugador: '+(nm||id)+' · ID '+id;const g=$('bpBt');g.innerHTML='';
+ DUR.forEach(([lab,m])=>{const b=document.createElement('button');b.className='tg';b.textContent=lab;if(!m)b.style.borderColor='var(--a)';
+  b.onclick=()=>banUser(id,nm,m);g.appendChild(b)});sh('bp',1)}
+async function banUser(id,nm,m){SFX.click();
+ try{await FS.setDoc(FS.doc(fb.db,'bans',id),{id,name:nm||'',perm:!m,until:m?Date.now()+m*60000:0,by:prof.id,t:Date.now()});
+  const s=await FS.getDocs(FS.query(FS.collection(fb.db,'reports'),FS.where('to','==',id)));await Promise.all(s.docs.map(d=>FS.deleteDoc(d.ref)));
+  sh('bp',0);toast('⛔ Jugador baneado');loadAdm()}catch(e){toast(errEs(e))}}
+$('bpX').onclick=()=>{SFX.click();sh('bp',0)};
+$('nAdm').onclick=()=>{au();SFX.click();if(!isAdm())return;sh('adm',1);loadAdm()};
+$('admX').onclick=()=>{SFX.click();sh('adm',0)};
+$('admGo').onclick=async()=>{SFX.click();const id=$('admId').value.trim();
+ if(!/^\d{8}$/.test(id)){toast('Escribe un ID de 8 números');return}
+ try{const d=await pget(id);if(!d){toast('No existe ese ID');return}askBan(id,d.name)}catch(e){toast(errEs(e))}};
+
+/* ===== D.M.R v4: en línea, menú de amigo, perfil, estrellas, reportar ===== */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.avw{position:relative;flex:none}
+.dot{position:absolute;right:-1px;bottom:-1px;width:14px;height:14px;border-radius:50%;border:2px solid #070b22;background:#667}
+.dot.on{background:#19e68c;box-shadow:0 0 8px #19e68c}
+.frr{cursor:pointer}
+.sec2{font-size:12px;letter-spacing:2px;opacity:.85;text-align:left;margin-top:4px}
+#fm,#pv{background:rgba(0,0,10,.75);z-index:44}#pv{z-index:46}
+.act{width:100%;padding:13px;font-size:15px;font-weight:800;color:#fff;border:2px solid var(--b);border-radius:14px;background:#0a1030;text-align:left}
+.act.red{border-color:var(--a);background:#2a0810}
+</style>`);
+document.body.insertAdjacentHTML('beforeend',`
+<div id="fm" class="ov hide"><div class="panel">
+ <div id="fmHead"></div>
+ <button class="act" id="fmPf">👤 VER PERFIL</button>
+ <button class="act" id="fmIv">📨 INVITAR A JUGAR</button>
+ <button class="act red" id="fmDel">🗑 ELIMINAR AMISTAD</button>
+ <button class="act red" id="fmRep">⚠ REPORTAR</button>
+ <button class="tg" id="fmX">CERRAR</button>
+</div></div>
+<div id="pv" class="ov hide"><div class="panel">
+ <h2>👤 PERFIL</h2>
+ <div class="card" id="pvCard">
+  <div class="crow"><div class="av big" id="pvAv"></div>
+   <div class="cin"><div class="nrow"><b id="pvNm" style="flex:1;font-size:19px"></b><button class="star" id="pvSt">⭐ <b id="pvSn">0</b></button></div><small id="pvOn"></small></div></div>
+  <div class="lvl"><b id="pvLv"></b><span id="pvXp"></span></div>
+  <div class="xb wide"><i id="pvXi"></i></div>
+  <div class="idrow"><span>ID <b id="pvId"></b></span></div>
+  <div class="stats" id="pvSt2"></div>
+ </div>
+ <small class="mini">Toca ⭐ para darle una estrella (otro toque se la quita)</small>
+ <button class="btn" id="pvX">VOLVER</button>
+</div></div>`);
+
+/* ---- en línea: cada jugador avisa que está activo cada 30 s ---- */
+const ONL=d=>!!(d&&d.seen&&Date.now()-d.seen<75000);
+const beat=()=>{if(ME&&fb&&SY&&!document.hidden)FS.setDoc(FS.doc(fb.db,'players',prof.id),{seen:Date.now()},{merge:true}).catch(()=>{})};
+setInterval(beat,30000);
+const bt0=setInterval(()=>{if(SY){beat();clearInterval(bt0)}},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)beat()});
+
+const row3=d=>`<div class="idrow frr" data-i="${esc(d.id)}" style="gap:8px"><div class="avw"><div class="av" style='background-image:url("${AVS[d.av||0]||AVS[0]}")'></div><i class="dot${ONL(d)?' on':''}"></i></div><span style="flex:1;text-align:left"><b>${esc(d.name)}</b>${d.ver?' '+VF:''}<br><small>NIVEL ${d.level||1} · ${ONL(d)?'🟢 En línea':'Desconectado'}</small></span></div>`;
+
+/* amigos = solicitudes aceptadas (así borrar una amistad la quita a los dos) */
+getF=async function(){
+ const C=FS.collection(fb.db,'reqs');
+ const[out,inn]=await Promise.all([FS.getDocs(FS.query(C,FS.where('from','==',prof.id))),FS.getDocs(FS.query(C,FS.where('to','==',prof.id)))]);
+ const ids=new Set(),pend=[];
+ out.forEach(d=>{if(d.data().st==='ok')ids.add(d.data().to)});
+ inn.forEach(d=>{const q=d.data();if(q.st==='ok')ids.add(q.from);else pend.push(q.from)});
+ const fs=(await Promise.all([...ids].map(pget))).filter(Boolean),rs=(await Promise.all(pend.map(pget))).filter(Boolean);
+ FR=fs;return{fs,rs}};
+loadF2=async function(){const L=$('f2List'),R=$('f2Rq');
+ try{const{fs,rs}=await getF();
+  const on=fs.filter(ONL),off=fs.filter(d=>!ONL(d));
+  L.innerHTML=fs.length?'<div class="sec2">🟢 EN LÍNEA ('+on.length+')</div>'+(on.map(d=>row3(d)).join('')||'<div class="pst">Nadie en línea</div>')+'<div class="sec2">⚫ DESCONECTADOS ('+off.length+')</div>'+(off.map(d=>row3(d)).join('')||'<div class="pst">—</div>'):'<div class="pst">Aún no tienes amigos agregados</div>';
+  L.querySelectorAll('.frr').forEach(e=>e.onclick=()=>{SFX.click();openFm(e.dataset.i)});
+  R.innerHTML=rs.map(d=>row2(d,'<button class="tg mn" data-i="'+esc(d.id)+'" data-a="1">ACEPTAR</button><button class="tg mn" data-i="'+esc(d.id)+'">RECHAZAR</button>')).join('')||'<div class="pst">Sin solicitudes</div>';
+  $('f2Rn').textContent=rs.length?'('+rs.length+')':'';
+  R.querySelectorAll('button').forEach(b=>b.onclick=()=>answerReq(b.dataset.i,b.dataset.a==='1'))
+ }catch(e){L.textContent=errEs(e)}};
+setInterval(()=>{if(ME&&fb&&!$('fr2').classList.contains('hide')&&$('fm').classList.contains('hide')&&$('pv').classList.contains('hide'))loadF2()},20000);
+
+/* ---- menú al tocar un amigo ---- */
+let FMc=null;
+function openFm(id){const d=FR.find(x=>x.id===id);if(!d)return;FMc=d;$('fmHead').innerHTML=row3(d).replace('frr','');sh('fm',1)}
+$('fmX').onclick=()=>{SFX.click();sh('fm',0)};
+$('fmPf').onclick=()=>{SFX.click();sh('fm',0);openPv(FMc.id)};
+$('fmIv').onclick=async()=>{SFX.click();
+ try{await FS.setDoc(FS.doc(fb.db,'invites',prof.id+'_'+FMc.id),{from:prof.id,name:prof.name,to:FMc.id,t:Date.now()});toast('📨 INVITACIÓN ENVIADA')}catch(e){toast(errEs(e))}};
+$('fmDel').onclick=()=>{SFX.click();const d=FMc;sh('fm',0);
+ modal('🗑 ELIMINAR AMISTAD','¿Eliminar a <b>'+esc(d.name)+'</b> de tus amigos?',[['SÍ, ELIMINAR',async()=>{
+  try{await FS.deleteDoc(FS.doc(fb.db,'reqs',prof.id+'_'+d.id));await FS.deleteDoc(FS.doc(fb.db,'reqs',d.id+'_'+prof.id));toast('Amistad eliminada');loadF2()}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])};
+$('fmRep').onclick=()=>{SFX.click();const d=FMc;sh('fm',0);
+ modal('⚠ REPORTAR','¿Reportar a <b>'+esc(d.name)+'</b>?',[['SÍ, REPORTAR',async()=>{
+  try{await FS.setDoc(FS.doc(fb.db,'reports',prof.id+'_'+d.id+'_'+Date.now()),{from:prof.id,to:d.id,t:Date.now()});toast('⚠ Reporte enviado')}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])};
+
+/* ---- perfil del amigo + estrellas ---- */
+const starQ=id=>FS.getDocs(FS.query(FS.collection(fb.db,'stars'),FS.where('to','==',id)));
+let PVc=null,PVg=false;
+async function openPv(id){
+ try{const d=await pget(id);if(!d){toast('Jugador no encontrado');return}PVc=d;
+  const st=await starQ(id),mine=await FS.getDoc(FS.doc(fb.db,'stars',prof.id+'_'+id));PVg=mine.exists();
+  const L=d.level||1,xp=Math.max(0,(d.xp||0)-XP_PER_LV*(L-1)),c=CARDS[d.card||0]||CARDS[0],u='url("'+c.u+'")';
+  $('pvAv').style.backgroundImage='url("'+(AVS[d.av||0]||AVS[0])+'")';
+  $('pvNm').innerHTML=esc(d.name)+(d.ver?' '+VF:'');
+  $('pvSn').textContent=st.size;$('pvSt').style.background=PVg?'#ffd40055':'';
+  $('pvOn').textContent=ONL(d)?'🟢 En línea':'⚫ Desconectado';
+  $('pvLv').textContent='NIVEL '+L;$('pvXp').textContent=L>=100?'MÁXIMO':xp+'/'+XP_PER_LV+' XP';
+  $('pvXi').style.width=(L>=100?100:Math.min(100,xp/XP_PER_LV*100))+'%';
+  $('pvId').textContent=d.id;
+  $('pvSt2').textContent='🏆 '+(d.w||0)+' ganadas · '+(d.l||0)+' perdidas · mejor nivel '+(d.best||0);
+  const s=$('pvCard').style;s.backgroundImage='linear-gradient(rgba(5,8,28,.3),rgba(5,8,28,.55)),'+u;s.backgroundSize='cover';s.backgroundPosition='center';
+  sh('pv',1)
+ }catch(e){toast(errEs(e))}}
+$('pvX').onclick=()=>{SFX.click();sh('pv',0)};
+$('pvSt').onclick=async()=>{SFX.click();if(!PVc)return;const ref=FS.doc(fb.db,'stars',prof.id+'_'+PVc.id);
+ try{if(PVg){await FS.deleteDoc(ref);PVg=false}else{await FS.setDoc(ref,{from:prof.id,to:PVc.id});PVg=true;SFX.point()}
+  const st=await starQ(PVc.id);$('pvSn').textContent=st.size;$('pvSt').style.background=PVg?'#ffd40055':''}catch(e){toast(errEs(e))}};
+
+/* ---- tus estrellas en tu propio perfil ---- */
+async function refStars(){if(!fb||!ME)return;try{const st=await starQ(prof.id);$('cstn').textContent=st.size}catch(e){}}
+const _pfc=$('pf').onclick;$('pf').onclick=()=>{_pfc();refStars()};
+$('cst').onclick=()=>{au();SFX.click();refStars();toast('⭐ Tus amigos te dan estrellas desde tu perfil')};
 </script>
 </body></html>
