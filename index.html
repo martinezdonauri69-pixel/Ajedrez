@@ -1555,6 +1555,49 @@ rf9();
  document.head.appendChild(s);
 })();
 
+/* ===== ENTRAR CON NOMBRE DE USUARIO + CONTRASEÑA (mínimo 8) ===== */
+(function(){
+ $('aNm').placeholder='Nombre de usuario';
+ $('aPw').placeholder='Contraseña (mínimo 8)';
+ const fake=u=>u.toLowerCase()+'@dmrping.app';
+ const okU=u=>/^[A-Za-z0-9_]{3,12}$/.test(u);
+
+ acMode=function(c){acCreate=c;
+  $('aNm').maxLength=c?12:60;
+  $('aEm').classList.toggle('hide',!c);
+  $('aIn').textContent=c?'CREAR USUARIO':'ENTRAR';
+  $('aTg').textContent=c?'YA TENGO USUARIO':'CREAR USUARIO';
+  msgA('')};
+
+ async function doAuth2(){
+  const nm=$('aNm').value.trim(),em=$('aEm').value.trim(),pw=$('aPw').value;
+  if(!fb){msgA('Sin conexión con el servidor. Intenta de nuevo.');return}
+  if(acCreate){
+   if(!okU(nm)){msgA('Usuario: de 3 a 12 letras, números o _ (sin espacios)');return}
+   if(!/^\S+@\S+\.\S+$/.test(em)){msgA('Escribe un correo válido');return}
+   if(pw.length<8){msgA('La contraseña necesita 8 o más caracteres');return}
+  }else if(!nm||!pw){msgA('Escribe tu usuario y tu contraseña');return}
+  msgA('Un momento…');
+  try{
+   if(acCreate){
+    ME=(await FA.createUserWithEmailAndPassword(fb.auth,fake(nm),pw)).user;
+    while((await FS.getDoc(FS.doc(fb.db,'players',prof.id))).exists())prof.id=genId();
+    prof.name=nm;
+    await FS.setDoc(FS.doc(fb.db,'byUid',ME.uid),{id:prof.id,email:em});
+    await pushNow();SY=true;_sv();showP();
+   }else{
+    ME=(await FA.signInWithEmailAndPassword(fb.auth,nm.indexOf('@')>0?nm:fake(nm),pw)).user;
+    await loadMe();
+   }
+   $('acc').classList.add('hide');SFX.point();toast('✔ Bienvenido '+dn());
+  }catch(e){
+   msgA(e.code==='auth/email-already-in-use'?'Ese nombre de usuario ya existe'
+       :e.code==='auth/invalid-credential'?'Usuario o contraseña incorrectos'
+       :errEs(e));
+  }}
+ $('aIn').onclick=doAuth2;
+ acMode(false);
+})();
 
 </script>
 
