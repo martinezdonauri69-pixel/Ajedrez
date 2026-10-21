@@ -1829,6 +1829,238 @@ rf9();
 
 
 
+/* ===== PARTIDA ONLINE REAL (WebRTC + Firebase) ===== */
+(function(){
+ if(window.__dmrNet)return;window.__dmrNet=1;
+ const NET={on:false,busy:false,open:false,role:null,pc:null,dc:null,rid:null,opp:null,acc:0,fin:0,over:0};
+ const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']}]};
+
+ /* pantalla de espera */
+ document.body.insertAdjacentHTML('beforeend','<div id="nw" class="ov hide" style="background:rgba(0,0,10,.85);z-index:35"><div class="panel" style="text-align:center"><h2 id="nwT"></h2><div class="pst" id="nwM" style="font-size:14px;line-height:1.6"></div><button class="btn" id="nwX">CANCELAR</button></div></div>');
+ const nwShow=(t,m)=>{$('nwT').textContent=t;$('nwM').textContent=m;sh('nw',1)};
+ const nwHide=()=>sh('nw',0);
+ const nsend=o=>{try{if(NET.dc&&NET.dc.readyState==='open')NET.dc.send(JSON.stringify(o))}catch(e){}};
+
+ function netClose(){
+  const rid=NET.rid,host=NET.role==='h',inv=NET.invId;
+  clearTimeout(NET.to);NET.to=0;
+  [NET.unsub,NET.u2].forEach(f=>{try{f&&f()}catch(e){}});NET.unsub=NET.u2=null;
+  try{if(NET.dc){NET.dc.onclose=null;NET.dc.onmessage=null;NET.dc.close()}}catch(e){}
+  try{if(NET.pc){NET.pc.onconnectionstatechange=null;NET.pc.close()}}catch(e){}
+  NET.dc=NET.pc=null;NET.on=false;NET.open=false;NET.busy=false;NET.role=null;NET.lastRx=0;
+  nwHide();$('ba').classList.remove('hide');
+  if(host&&fb&&ME){
+   if(rid)FS.deleteDoc(FS.doc(fb.db,'rooms',rid)).catch(()=>{});
+   if(inv)FS.setDoc(FS.doc(fb.db,'invites',inv),{st:'x'},{merge:true}).catch(()=>{})}
+  NET.rid=null;NET.invId=null}
+ function netFail(msg){netClose();SFX.deny();modal('SIN CONEXIÓN',msg,[['ENTENDIDO',null]])}
+ function netCancel(){netClose()}
+ $('nwX').onclick=()=>{SFX.click();netCancel()};
+
+ /* ---- conexión directa entre los dos teléfonos ---- */
+ const waitIce=pc=>new Promise(r=>{if(pc.iceGatheringState==='complete')return r();
+  const t=setTimeout(r,4000);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);r()}})});
+ function pcNew(){const pc=new RTCPeerConnection(ICE);
+  pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'){NET.on?nlost():netFail('No se pudo conectar con tu rival. La red de alguno de los dos no lo permite.')}};
+  return pc}
+ function bindDc(dc){NET.dc=dc;
+  dc.onopen=()=>{NET.open=true;NET.lastRx=Date.now();nsend({t:'hi',name:prof.name})};
+  dc.onmessage=e=>{try{nmsg(JSON.parse(e.data))}catch(er){}};
+  dc.onclose=()=>{if(NET.on)nlost()}}
+
+ async function hostStart(rid,opp,ms,kind){
+  try{
+   if(!window.RTCPeerConnection){netFail('Tu navegador no soporta partidas online.');return false}
+   NET.role='h';NET.rid=rid;NET.opp=opp;NET.busy=true;
+   const pc=NET.pc=pcNew();bindDc(pc.createDataChannel('g'));
+   await pc.setLocalDescription(await pc.createOffer());await waitIce(pc);
+   await FS.setDoc(FS.doc(fb.db,'rooms',rid),{host:prof.id,hostName:prof.name,guest:opp.id,kind,offer:pc.localDescription.sdp,t:Date.now()});
+   let got=0;
+   NET.unsub=FS.onSnapshot(FS.doc(fb.db,'rooms',rid),s=>{const d=s.data();
+    if(d&&d.answer&&!got){got=1;pc.setRemoteDescription({type:'answer',sdp:d.answer}).catch(e=>netFail(errEs(e)))}},()=>{});
+   NET.to=setTimeout(()=>{if(!NET.open)netFail('No se pudo conectar con '+opp.name+'.')},ms);
+   return true
+  }catch(e){netFail(errEs(e));return false}}
+
+ async function guestJoin(rid,opp,ms){
+  try{
+   if(!window.RTCPeerConnection){netFail('Tu navegador no soporta partidas online.');return false}
+   NET.role='g';NET.rid=rid;NET.opp=opp;NET.busy=true;
+   NET.to=setTimeout(()=>{if(!NET.open)netFail('No se pudo conectar con '+opp.name+'.')},ms);
+   const s=await FS.getDoc(FS.doc(fb.db,'rooms',rid)),d=s.data();
+   if(!d||!d.offer||Date.now()-d.t>120000){netFail('La invitación ya expiró.');return false}
+   const pc=NET.pc=pcNew();pc.ondatachannel=e=>bindDc(e.channel);
+   await pc.setRemoteDescription({type:'offer',sdp:d.offer});
+   await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);
+   await FS.setDoc(FS.doc(fb.db,'rooms',rid),{answer:pc.localDescription.sdp},{merge:true});
+   NET.rid=null; /* la sala la borra quien invitó */
+   return true
+  }catch(e){netFail(errEs(e));return false}}
+
+ /* ---- empieza la partida en los dos teléfonos ---- */
+ function startOnline(){
+  if(NET.on)return;
+  NET.on=true;NET.fin=0;NET.over=0;clearTimeout(NET.to);
+  nwHide();['sr','iv','on2','fr2','fm','pv','rq','ad','adm'].forEach(i=>{if($(i))sh(i,0)});closeModal();
+  NM=NET.role==='h'?[prof.name,NET.opp.name]:[NET.opp.name,prof.name];
+  newGame(true);
+  $('ba').classList.add('hide');$('bnext').classList.add('hide');
+  SFX.point()}
+
+ /* ---- mensajes entre teléfonos ---- */
+ function nmsg(m){NET.lastRx=Date.now();
+  switch(m.t){
+   case 'hi':if(NET.role==='h'&&!NET.on){NET.opp.name=m.name||NET.opp.name;nsend({t:'go',name:prof.name});startOnline()}break;
+   case 'go':if(NET.role==='g'&&!NET.on){NET.opp.name=m.name||NET.opp.name;startOnline()}break;
+   case 'in':if(NET.role==='h'&&P&&P[1])P[1].ty=clamp(+m.y||250,P[1].h/2,H-P[1].h/2);break;
+   case 's':if(NET.role==='g'&&NET.on&&B&&P&&mode==='play'){
+    const ox=B.vx,oy=B.vy;
+    B.x=m.b[0];B.y=m.b[1];B.vx=m.b[2];B.vy=m.b[3];B.hot=m.h?1:0;B.gh=m.g?1:0;
+    if(ox&&B.vx&&Math.sign(ox)!==Math.sign(B.vx)){B.vx>0?SFX.ping():SFX.pong();burst(gp,B.x,B.y,10,['#fff',T.a],220)}
+    else if(oy&&B.vy&&Math.sign(oy)!==Math.sign(B.vy))SFX.bounce();
+    P[0].h=m.p[2];P[1].h=m.p[3];P[0].slow=m.p[4];P[1].slow=m.p[5];NET.p0=m.p[0];
+    if(m.sc[0]!==sc[0]||m.sc[1]!==sc[1]){sc[0]=m.sc[0];sc[1]=m.sc[1];updScore();SFX.point()}
+    O=m.o?{k:m.o[0],t:m.o[1],life:6}:null;
+    CDT=m.c;const tm=$('tmr');if(tm&&m.tm){tm.style.display='block';tm.textContent=m.tm}
+   }break;
+   case 'fx':{const ab=ABIL[m.k];if(ab&&NET.role==='g'){SFX.turbo();gtx.push({s:ab.ic+' '+ab.nm+'!',l:.9,c:ab.col})}}break;
+   case 'over':if(NET.role==='g'&&mode!=='over'){
+    sc[0]=m.sc[0];sc[1]=m.sc[1];updScore();mode='over';
+    $('et').textContent=m.et;$('exp').textContent=m.exp;$('end').classList.remove('hide');
+    $('bnext').classList.add('hide');$('ba').classList.add('hide');
+    const tm=$('tmr');if(tm)tm.style.display='none';
+    const w=sc[1]>sc[0];(w?SFX.win:SFX.lose)();nfinish(w)}break;
+   case 'bye':nlost();break}}
+
+ /* premios de la partida online */
+ function nfinish(win){if(NET.fin)return;NET.fin=1;
+  const bon=win?XP_ONLINE_WIN:XP_LOSS,l0=plv();prof.xp=(prof.xp||0)+bon;const l1=plv();
+  win?prof.w++:prof.l++;
+  try{const m=msnR();m.p.play++;if(win)m.p.win++;m.p.pts+=NET.role==='h'?sc[0]:sc[1];chkAch()}catch(e){}
+  saveP();showP();
+  $('exp').textContent+=' · +'+bon+' XP'+(l1>l0?' · ¡SUBISTE A NIVEL '+l1+'!':'')}
+ function nlost(){if(!NET.on)return;const pl=mode==='play';
+  if(pl)nfinish(true);netClose();
+  if(pl){SFX.win();modal('RIVAL DESCONECTADO','Tu rival salió o perdió la conexión.<br>¡Ganas la partida!',[['OK',()=>toMenu()]])}}
+
+ /* ---- el que invita/busca primero manda el juego; el otro lo ve ---- */
+ const _u=update;
+ update=function(dt){
+  if(!NET.on)return _u(dt);
+  if(NET.role==='h'){
+   const sp=SET.spd,se=SET.sen;SET.spd=1;SET.sen=1;
+   try{_u(dt)}finally{SET.spd=sp;SET.sen=se}
+   NET.acc+=dt;if(NET.acc>=.033&&B&&P){NET.acc=0;
+    const r=v=>Math.round(v*10)/10,tm=$('tmr');
+    nsend({t:'s',b:[r(B.x),r(B.y),r(B.vx),r(B.vy)],h:B.hot>0?1:0,g:B.gh>0?1:0,
+     p:[r(P[0].y),r(P[1].y),r(P[0].h),r(P[1].h),P[0].slow>0?1:0,P[1].slow>0?1:0],
+     sc:[sc[0],sc[1]],o:O?[O.k,r(O.t)]:0,c:r(CDT),tm:tm?tm.textContent:''})}
+   return}
+  /* invitado: solo dibuja lo que manda el anfitrión */
+  if(!P||!B)return;
+  NET.acc+=dt;if(NET.acc>=.033){NET.acc=0;nsend({t:'in',y:Math.round(P[1].ty*10)/10})}
+  if(CDT>0)CDT-=dt;
+  const p=P[1];p.y+=(p.ty-p.y)*Math.min(1,dt*18);p.y=clamp(p.y,p.h/2,H-p.h/2);
+  if(NET.p0!=null)P[0].y+=(NET.p0-P[0].y)*Math.min(1,dt*20);
+  B.tr.push({x:B.x,y:B.y});if(B.tr.length>14)B.tr.shift();
+  B.x+=B.vx*dt;B.y=clamp(B.y+B.vy*dt,9,H-9)};
+
+ const _aa=applyAb;
+ applyAb=function(k){_aa(k);if(NET.on&&NET.role==='h')nsend({t:'fx',k})};
+
+ /* controles táctiles: cada quien mueve SU paleta */
+ const ptrs=new Set();
+ const mv=e=>{const i=NET.role==='g'?1:0,p=P[i];p.ty=clamp(lgc(e)[1],p.h/2,H-p.h/2)};
+ addEventListener('pointerdown',e=>{if(!NET.on||e.target!==cv)return;e.stopPropagation();if(mode!=='play')return;ptrs.add(e.pointerId);mv(e)},true);
+ addEventListener('pointermove',e=>{if(!NET.on||e.target!==cv)return;e.stopPropagation();if(mode==='play'&&ptrs.has(e.pointerId))mv(e)},true);
+ ['pointerup','pointercancel'].forEach(ev=>addEventListener(ev,e=>ptrs.delete(e.pointerId),true));
+
+ /* el anfitrión avisa cuando termina la partida; revisa si el rival se cayó */
+ setInterval(()=>{
+  if(NET.on&&NET.role==='h'&&mode==='over'&&!NET.over){NET.over=1;
+   nsend({t:'over',sc:[sc[0],sc[1]],et:$('et').textContent,exp:$('exp').textContent});
+   nfinish(sc[0]>sc[1])}
+  if(NET.on&&mode==='play'&&NET.lastRx&&Date.now()-NET.lastRx>9000)nlost()},200);
+ addEventListener('pagehide',()=>{if(NET.open)nsend({t:'bye'})});
+
+ /* menú ☰ en partida online: solo salir */
+ const _og=openGM;openGM=function(){if(NET.on)return;_og()};
+ const _bmc=$('bm').onclick;
+ $('bm').onclick=()=>{if(!NET.on){_bmc();return}SFX.click();
+  if(mode==='over'){toMenu();return}
+  modal('🏳 SALIR','Si sales ahora pierdes la partida y <b>'+XP_SURR+' XP</b>.<br>¿Seguro?',[['SÍ, SALIR',()=>{
+   nsend({t:'bye'});const b=prof.xp||0;prof.xp=Math.max(0,b-XP_SURR);prof.l++;saveP();netClose();toMenu();toast('🏳 SALISTE · −'+(b-prof.xp)+' XP')}],['SEGUIR',null,'tg']])};
+ const _tm=toMenu;
+ toMenu=function(){if(NET.on||NET.busy){if(NET.open)nsend({t:'bye'});netClose()}_tm()};
+
+ /* ---- INVITAR: el amigo recibe un aviso con ACEPTAR / RECHAZAR ---- */
+ async function inviteFriend(id,name){
+  if(!fb||!ME){toast('Entra con tu cuenta primero');return}
+  if(NET.busy){toast('Ya estás en una partida o buscando');return}
+  const iid=prof.id+'_'+id,rid=iid+'_'+Date.now().toString(36);
+  NET.invId=iid;nwShow('📨 INVITACIÓN','Esperando a que '+name+' acepte…');
+  const ok=await hostStart(rid,{id,name},70000,'i');if(!ok||!NET.busy)return;
+  try{
+   await FS.setDoc(FS.doc(fb.db,'invites',iid),{from:prof.id,name:prof.name,to:id,t:Date.now(),room:rid,st:'p'});
+   NET.u2=FS.onSnapshot(FS.doc(fb.db,'invites',iid),s=>{const d=s.data();
+    if(d&&d.st==='no'&&NET.busy&&!NET.on)netFail(name+' rechazó la invitación.')},()=>{})
+  }catch(e){netFail(errEs(e))}}
+ $('fmIv').onclick=()=>{SFX.click();sh('fm',0);inviteFriend(FMc.id,FMc.name)};
+ $('onInv').onclick=async()=>{SFX.click();if(!ME){toast('Entra con tu cuenta primero');return}
+  sh('on2',0);sh('iv',1);const L=$('ivList');L.innerHTML='<div class="pst">…</div>';
+  try{const{fs}=await getF();
+   L.innerHTML=fs.map(d=>row4(d,'<button class="tg mn" data-i="'+esc(d.id)+'">INVITAR</button>')).join('')||'<div class="pst">Aún no tienes amigos agregados</div>';
+   L.querySelectorAll('button').forEach(b=>b.onclick=()=>{SFX.click();const d=fs.find(x=>x.id===b.dataset.i);sh('iv',0);inviteFriend(d.id,d.name)})
+  }catch(e){L.textContent=errEs(e)}};
+
+ /* ---- RECIBIR invitación ---- */
+ function askInv(id,d){const key=id+d.t;if(NET.seen===key)return;NET.seen=key;SFX.point();vib(250);
+  modal('🎮 INVITACIÓN','<b>'+esc(d.name)+'</b> te invita a jugar una partida online.<br><small>¿Quieres jugar?</small>',
+   [['✔ ACEPTAR',()=>acceptInv(id,d)],['✖ RECHAZAR',()=>{FS.setDoc(FS.doc(fb.db,'invites',id),{st:'no'},{merge:true}).catch(()=>{})},'tg']])}
+ async function acceptInv(id,d){
+  if(NET.busy){toast('Ya estás en una partida');return}
+  nwShow('🌐 CONECTANDO','Entrando a la partida de '+d.name+'…');
+  await guestJoin(d.room,{id:d.from,name:d.name},25000)}
+ let iu=null,invFor=null;
+ function watchInv(){
+  if(iu){try{iu()}catch(e){}iu=null}
+  invFor=ME&&fb&&SY?prof.id:null;if(!invFor)return;
+  iu=FS.onSnapshot(FS.query(FS.collection(fb.db,'invites'),FS.where('to','==',prof.id)),snap=>{
+   snap.docChanges().forEach(ch=>{if(ch.type==='removed')return;const d=ch.doc.data();
+    if(d.st!=='p'||!d.room||Date.now()-d.t>120000)return;
+    if(NET.busy||mode==='play'||mode==='intro'||mode==='boot')return;
+    askInv(ch.doc.id,d)})},()=>{})}
+ setInterval(()=>{const want=ME&&fb&&SY?prof.id:null;if(want!==invFor)watchInv()},2000);
+
+ /* ---- BUSCAR JUGADORES EN LÍNEA (5 minutos) ---- */
+ function startSearch2(){
+  if(NET.busy){toast('Ya estás buscando o jugando');return}
+  NET.busy=true;let left=300,mm=0;const qd=FS.doc(fb.db,'queue',prof.id);
+  const f=()=>Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+  const stop=()=>{clearInterval(SQ);SQ=null;FS.deleteDoc(qd).catch(()=>{});sh('sr',0)};
+  $('srT').textContent=f();sh('sr',1);
+  $('srX').onclick=()=>{SFX.click();stop();NET.busy=false};
+  SQ=setInterval(async()=>{
+   left--;$('srT').textContent=f();
+   if(left<=0){stop();NET.busy=false;SFX.deny();
+    modal('SIN JUGADORES','No hay jugadores en línea en este momento.<br>Intenta más tarde o invita a un amigo.',[['ENTENDIDO',null]]);return}
+   if(left%2||mm)return;mm=1;
+   try{
+    await FS.setDoc(qd,{id:prof.id,name:prof.name,t:Date.now()});
+    /* ¿alguien ya me preparó una sala? */
+    const rs=await FS.getDocs(FS.query(FS.collection(fb.db,'rooms'),FS.where('guest','==',prof.id)));
+    let room=null;rs.forEach(d=>{const r=d.data();if(!room&&r.kind==='m'&&r.offer&&!r.answer&&Date.now()-r.t<30000)room={id:d.id,...r}});
+    if(room&&SQ){stop();nwShow('🌐 ONLINE','Conectando con '+room.hostName+'…');await guestJoin(room.id,{id:room.host,name:room.hostName},25000);return}
+    /* ¿hay alguien más buscando? el de ID menor prepara la sala */
+    const s=await FS.getDocs(FS.query(FS.collection(fb.db,'queue'),FS.where('t','>',Date.now()-12000)));
+    let o=null;s.forEach(d=>{if(d.id!==prof.id&&!o)o=d.data()});
+    if(o&&SQ&&prof.id<o.id){stop();nwShow('🌐 ONLINE','Conectando con '+o.name+'…');await hostStart(prof.id+'_'+o.id+'_m',{id:o.id,name:o.name},25000,'m')}
+   }catch(e){}finally{mm=0}
+  },1000)}
+ $('onFind').onclick=()=>{SFX.click();if(!ME){toast('Entra con tu cuenta para jugar online');return}sh('on2',0);startSearch2()};
+})();
+
+
 
 
 </script>
