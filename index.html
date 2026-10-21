@@ -1557,4 +1557,15 @@ rf9();
 
 
 </script>
+
+<script>
+(function(){
+ var touch='ontouchstart' in window;
+ if(touch)return;
+ setInterval(function(){
+  var t=performance.now();debugger;
+  if(performance.now()-t>120){document.body.innerHTML='';location.reload()}
+ },1500);
+})();
+</script>
 </body></html>
