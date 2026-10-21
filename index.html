@@ -1528,5 +1528,26 @@ const _bb9=bakeBG;bakeBG=function(){_bb9();if(!BGC)return;const g=BGC.getContext
  g.strokeStyle='#fff';g.globalAlpha=.85;g.lineWidth=4;g.shadowColor=T.b;g.shadowBlur=18;g.strokeRect(14,14,772,472);
  g.shadowBlur=0;g.globalAlpha=.3;g.lineWidth=2;g.beginPath();g.moveTo(14,250);g.lineTo(786,250);g.stroke();g.restore()};
 rf9();
+
+
+
+
+<script>
+(function(){
+ const inp=e=>e.target&&e.target.closest&&e.target.closest('input,textarea');
+ addEventListener('contextmenu',e=>{if(!inp(e))e.preventDefault()});
+ addEventListener('dragstart',e=>e.preventDefault());
+ addEventListener('keydown',e=>{
+  const k=(e.key||'').toLowerCase();
+  if(e.key==='F12'||(e.ctrlKey&&e.shiftKey&&'ijc'.includes(k))||(e.ctrlKey&&(k==='u'||k==='s'))||(e.metaKey&&e.altKey&&'iujc'.includes(k))){e.preventDefault();e.stopPropagation()}
+ },true);
+ document.querySelectorAll('img').forEach(i=>i.draggable=false);
+ const s=document.createElement('style');
+ s.textContent='img,canvas{-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none}';
+ document.head.appendChild(s);
+})();
+</script>
+
+
 </script>
 </body></html>
