@@ -1269,5 +1269,62 @@ $('admGo').onclick=async()=>{SFX.click();const id=$('admId').value.trim();
  if(!/^\d{8}$/.test(id)){toast('Escribe un ID de 8 números');return}
  try{const d=await pget(id);if(!d){toast('No existe ese ID');return}askBan(id,d.name)}catch(e){toast(errEs(e))}};
 $('nAdm').onclick=()=>{au();SFX.click();if(!isAdm())return;sh('adm',1);admView(0)};
+
+/* ===== D.M.R v7: solicitudes en botón, conectados, 2 perfiles en reportes, verificado brillante ===== */
+
+/* 1) VERIFICADO: sello dorado que brilla */
+(function(){let p='',n=120;for(let i=0;i<n;i++){const a=i/n*6.2832,r=44+4*Math.cos(a*10);p+=(i?'L':'M')+(50+r*Math.cos(a)).toFixed(1)+' '+(50+r*Math.sin(a)).toFixed(1)}
+const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6b0"/><stop offset=".5" stop-color="#ffc400"/><stop offset="1" stop-color="#e08a00"/></linearGradient></defs><path d="'+p+'Z" fill="url(#g)" stroke="#fff3b0" stroke-width="3"/><path d="M30 52L44 66L71 36" fill="none" stroke="#8a5200" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 52L44 66L71 36" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+document.head.insertAdjacentHTML('beforeend','<style>.vf{width:19px!important;height:19px!important;background:url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/contain no-repeat!important;border-radius:0!important;box-shadow:none!important;font-size:0!important;color:transparent!important;vertical-align:-4px!important;filter:drop-shadow(0 0 5px #ffd400);animation:vfs 2.2s ease-in-out infinite}@keyframes vfs{50%{filter:drop-shadow(0 0 11px #fff1a0) brightness(1.3)}}#rq{background:rgba(0,0,10,.8);z-index:30}</style>')})();
+
+/* 2) SOLICITUDES en un botón + pestañas AMIGOS / CONECTADOS */
+document.body.insertAdjacentHTML('beforeend','<div id="rq" class="ov hide"><div class="panel"><h2>📩 SOLICITUDES</h2><div id="rqBox"></div><button class="btn" id="rqX">VOLVER</button></div></div>');
+$('rqBox').appendChild($('f2Rq'));
+$('f2Rn').parentElement.classList.add('hide');
+$('f2List').previousElementSibling.classList.add('hide');
+$('f2Add').insertAdjacentHTML('afterend','<button class="sec" id="f2ReqB" style="width:100%;flex:none">📩 SOLICITUDES</button><div class="bg" id="f2Tabs"><button class="tg" id="f2T0">👥 AMIGOS</button><button class="tg" id="f2T1">🟢 CONECTADOS</button></div>');
+$('f2List').insertAdjacentHTML('afterend','<div id="f2Con" class="hide" style="display:flex;flex-direction:column;gap:8px"></div>');
+
+let RS7=[],TAB=0;const SENT=new Set();
+const _gf=getF;getF=async function(){const r=await _gf();RS7=r.rs;return r};
+const _lf=loadF2;loadF2=async function(){await _lf();
+ const n=$('f2Rq').querySelectorAll('button[data-a="1"]').length;
+ $('f2ReqB').textContent='📩 SOLICITUDES'+(n?' ('+n+')':'');$('f2ReqB').style.borderColor=n?'#ffd400':''};
+const _of=openF2;openF2=function(){_of();f2Tab(0)};
+
+function f2Tab(n){TAB=n;sh('f2List',n==0);sh('f2Con',n==1);
+ [0,1].forEach(i=>{const b=$('f2T'+i);b.style.borderColor=i==n?'#fff':'';b.style.background=i==n?'linear-gradient(90deg,var(--a),var(--b))':''});
+ if(n==1)loadCon(true)}
+const row4=(d,b)=>row3(d).replace(' frr','').replace(/<\/div>$/,b+'</div>');
+async function loadCon(fresh){const C=$('f2Con');if(fresh)C.innerHTML='<div class="pst">Buscando jugadores…</div>';
+ try{if(fresh)await getF();
+  const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.where('seen','>',Date.now()-75000),FS.limit(40)));
+  const fid=new Set(FR.map(d=>d.id)),rid=new Set(RS7.map(d=>d.id)),list=[];
+  s.forEach(x=>{const d=x.data();if(d.id&&d.id!==prof.id&&!fid.has(d.id))list.push(d)});
+  $('f2T1').textContent='🟢 CONECTADOS'+(list.length?' ('+list.length+')':'');
+  C.innerHTML=list.map(d=>row4(d,rid.has(d.id)?'<button class="tg mn" data-a="1" data-i="'+esc(d.id)+'">ACEPTAR</button>':SENT.has(d.id)?'<button class="tg mn" disabled>ENVIADA ✔</button>':'<button class="tg mn" data-i="'+esc(d.id)+'">AGREGAR</button>')).join('')||'<div class="pst">No hay otros jugadores en línea ahora mismo</div>';
+  C.querySelectorAll('.idrow').forEach((r,i)=>r.onclick=e=>{if(e.target.closest('button'))return;SFX.click();openPv(list[i].id)});
+  C.querySelectorAll('button[data-i]').forEach(b=>b.onclick=async()=>{SFX.click();const id=b.dataset.i;
+   if(b.dataset.a){await answerReq(id,true);loadCon(true)}
+   else{try{await FS.setDoc(FS.doc(fb.db,'reqs',prof.id+'_'+id),{from:prof.id,to:id,st:'p'});SENT.add(id);SFX.point();toast('✔ SOLICITUD ENVIADA');loadCon(false)}catch(e){toast(errEs(e))}}})
+ }catch(e){C.textContent=errEs(e)}}
+$('f2T0').onclick=()=>{SFX.click();f2Tab(0)};
+$('f2T1').onclick=()=>{SFX.click();f2Tab(1)};
+$('f2ReqB').onclick=()=>{SFX.click();sh('rq',1);loadF2()};
+$('rqX').onclick=()=>{SFX.click();sh('rq',0)};
+setInterval(()=>{if(TAB==1&&ME&&fb&&!$('fr2').classList.contains('hide')&&$('fm').classList.contains('hide')&&$('pv').classList.contains('hide')&&$('rq').classList.contains('hide'))loadCon(false)},15000);
+f2Tab(0);
+
+/* 3) REPORTES: puedes abrir el perfil de quien reportó y del reportado */
+loadRep=async function(){const R=$('admRep');R.innerHTML='<div class="pst">…</div>';
+ try{const rs=await FS.getDocs(FS.query(FS.collection(fb.db,'reports'),FS.limit(300)));
+  RP=[];rs.forEach(d=>RP.push({k:d.id,...d.data()}));RP.sort((a,b)=>(b.t||0)-(a.t||0));
+  R.innerHTML=RP.map((q,i)=>'<div class="rpc"><div class="pst" style="text-align:left;line-height:1.6;letter-spacing:0;font-size:13px;opacity:1">🗣 El jugador <b>'+esc(q.fromName||'ID '+q.from)+'</b> reportó al jugador <b>'+esc(q.toName||'ID '+q.to)+'</b><br>📝 Motivo: <b>'+esc(q.why||'(sin motivo)')+'</b></div><div class="bg"><button class="tg mn" data-a="pf" data-i="'+i+'">👤 QUIEN REPORTÓ</button><button class="tg mn" data-a="pt" data-i="'+i+'">👤 REPORTADO</button><button class="tg mn" data-a="b" data-i="'+i+'">⛔ BANEAR</button><button class="tg mn" data-a="x" data-i="'+i+'">DESCARTAR</button></div></div>').join('')||'<div class="pst">Sin reportes</div>';
+  R.querySelectorAll('button').forEach(b=>b.onclick=async()=>{SFX.click();const q=RP[+b.dataset.i],a=b.dataset.a;
+   if(a==='pf')openPv(q.from);
+   else if(a==='pt')openPv(q.to);
+   else if(a==='b')askBan(q.to,q.toName||'');
+   else{try{await FS.deleteDoc(FS.doc(fb.db,'reports',q.k));toast('Reporte descartado');loadRep()}catch(e){toast(errEs(e))}}})
+ }catch(e){R.textContent=errEs(e)}};
 </script>
 </body></html>
