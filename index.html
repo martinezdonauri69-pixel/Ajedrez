@@ -2530,6 +2530,67 @@ rf9();
   if(ME&&fb&&!$('rnk').classList.contains('hide')&&$('rkm').classList.contains('hide'))silentRk()},15000);
 })();
 
+
+
+
+
+
+/* ===== D.M.R v13: verificado para tu usuario · lobby limpio · cabecera arriba ===== */
+(function(){
+ if(window.__dmr13)return;window.__dmr13=1;
+
+ /* ---------- 1) VERIFICADO para el usuario creado con tu correo ---------- */
+ const nrm=m=>{m=String(m||'').trim().toLowerCase();const p=m.split('@');let l=p[0],d=p[1]||'';if(d==='gmail.com'||d==='googlemail.com'){l=l.split('+')[0].replace(/\./g,'');d='gmail.com'}return l+'@'+d};
+ const OWN=['martinezdonauri69@gmail.com'].map(nrm);
+ let cacheU='',cacheO=false,lastW=0;
+ async function isOwner(){
+  if(!ME||!fb)return false;
+  if(cacheU===ME.uid)return cacheO;
+  let o=OWN.includes(nrm(ME.email));
+  if(!o){
+   try{
+    const b=await FS.getDoc(FS.doc(fb.db,'byUid',ME.uid));
+    o=b.exists()&&OWN.includes(nrm(b.data().email));
+   }catch(e){return false}
+  }
+  cacheU=ME.uid;cacheO=o;return o}
+
+ chkVer=async function(){
+  if(!ME||!fb||!SY){if(VER){VER=false;showP()}return}
+  try{
+   const d=await pget(prof.id);
+   let v=!!(d&&d.ver===true&&d.uid===ME.uid);
+   if(await isOwner()){
+    v=true;
+    if(!(d&&d.ver===true)&&Date.now()-lastW>30000){
+     lastW=Date.now();
+     FS.setDoc(FS.doc(fb.db,'players',prof.id),{ver:true},{merge:true}).catch(()=>{});
+    }
+   }
+   if(v!==VER){VER=v;showP()}
+  }catch(e){}};
+ setInterval(()=>{if(ME&&fb&&SY)chkVer()},1500);
+
+ /* ---------- 2) LOBBY: sin logo, sin "AMIGOS" repetido, cabecera arriba ---------- */
+ document.head.insertAdjacentHTML('beforeend','<style>'+
+  '#lg{display:none!important}'+
+  '#nFr{display:none!important}'+
+  '.tiles{grid-template-columns:repeat(3,1fr)!important}'+
+  '#menu>.top{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:10px;right:10px;width:auto;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:6px}'+
+  '#menu>.top .pf{flex:1 1 auto;min-width:0;max-width:230px!important;overflow:hidden}'+
+  '#menu>.top .pi{flex:1;min-width:0}'+
+  '#menu>.top .xb{width:100%!important}'+
+  '#menu>.top #pnT{max-width:100%!important}'+
+  '#menu>.top .coin,#menu>.top .gear{flex:none}'+
+  '#m2{margin:auto 0!important;padding-top:60px!important}'+
+ '</style>');
+ const tp=document.querySelector('#m2 .top');
+ if(tp)$('menu').insertBefore(tp,$('m2'));
+})();
+
+
+
+
 </script>
 
 <script>
