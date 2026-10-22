@@ -2467,7 +2467,43 @@ rf9();
 })();
 
 
+/* ===== D.M.R v12: verificado del dueño · medallas TOP 3 en el perfil · ranking que se actualiza ===== */
+(function(){
+ if(window.__dmr12)return;window.__dmr12=1;
 
+ /* Tu cuenta: el correo con el que te registraste o tu usuario de Firebase.
+    Esto solo hace que el juego INTENTE verificarte. Quien manda de verdad son las reglas de Firebase (por tu UID). */
+ const OWN=['martinezdonauri69@gmail.com','martinez@dmrping.app'];
+
+ /* ---------- 1) VERIFICADO automático para tu cuenta (lo ve todo el mundo) ---------- */
+ let own=null,ownU='',okU='',tried=0;
+ async function isOwn(){
+  if(!ME||!fb)return false;
+  if(ownU===ME.uid&&own!==null)return own;
+  ownU=ME.uid;own=OWN.includes(String(ME.email||'').toLowerCase());
+  if(!own){try{const b=await FS.getDoc(FS.doc(fb.db,'byUid',ME.uid));own=b.exists()&&OWN.includes(String(b.data().email||'').toLowerCase())}catch(e){own=false}}
+  return own}
+ async function ownerVerify(){
+  if(!ME||!fb||!SY||okU===ME.uid||Date.now()-tried<30000)return;
+  if(!(await isOwn()))return;
+  tried=Date.now();
+  try{const d=await pget(prof.id);
+   if(!(d&&d.ver===true))await FS.setDoc(FS.doc(fb.db,'players',prof.id),{ver:true},{merge:true});
+   okU=ME.uid;if(!VER){VER=true;showP()}
+  }catch(e){}}
+ setInterval(ownerVerify,4000);
+
+ /* ---------- 2) MEDALLAS 🥇🥈🥉 en el perfil de los 3 primeros del ranking ----------
+    Se calculan cada vez que alguien abre un perfil: si pierdes el puesto, la medalla se te quita sola. */
+ document.head.insertAdjacentHTML('beforeend','<style>#cav,#pvAv{position:relative}.mdl{position:absolute;right:-9px;bottom:-9px;font-size:30px;line-height:1;pointer-events:none;filter:drop-shadow(0 0 7px rgba(255,212,0,.95))}.medl{font-size:12px;font-weight:900;letter-spacing:1px;color:#ffd400;text-shadow:0 0 8px rgba(255,212,0,.6)}</style>');
+ $('chint').insertAdjacentHTML('beforebegin','<div id="cMedL" class="medl hide"></div>');
+ $('pvOn').insertAdjacentHTML('afterend','<div id="pvMedL" class="medl hide"></div>');
+
+ const MD=['🥇','🥈','🥉'],ML=['PRIMER LUGAR','SEGUNDO LUGAR','TERCER LUGAR'];
+ let TOP=[],TT=0;
+ async function top3(){
+  if(Date.now()-TT<12000)return TOP;
+  const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.orderBy('xp','desc'),FS.limit(3))),a=[];
 
 
 </script>
