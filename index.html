@@ -2309,6 +2309,167 @@ rf9();
 
 
 
+/* ===== D.M.R v11: verificado SOLO lo da el admin · eliminar jugadores · duplicados · correo único ===== */
+(function(){
+ if(window.__dmr11)return;window.__dmr11=1;
+
+ /* ---------- 1) El admin YA NO recibe verificado, nivel 100 ni desbloqueos solo por ser admin ---------- */
+ const ADMS=ADM.slice();ADM.length=0;
+ const amAdmin=()=>!!(ME&&ME.email&&ADMS.includes(ME.email.toLowerCase()));
+ document.head.insertAdjacentHTML('beforeend','<style>body[data-adm="1"] #nAdm.hide{display:block!important}</style>');
+ setInterval(()=>{document.body.dataset.adm=amAdmin()?'1':''},700);
+ $('nAdm').onclick=()=>{au();SFX.click();if(!amAdmin())return;sh('adm',1);admView(0)};
+
+ /* verificado = solo si la ficha del jugador en el servidor lo tiene y es SUYA */
+ chkVer=async function(){
+  if(!ME||!fb||!SY){if(VER){VER=false;showP()}return}
+  try{const d=await pget(prof.id),v=!!(d&&d.ver===true&&d.uid===ME.uid);if(v!==VER){VER=v;showP()}}catch(e){}};
+
+ /* ---------- utilidades ---------- */
+ const copyId2=id=>{try{navigator.clipboard.writeText(id).then(()=>toast('📋 ID COPIADO'),()=>toast('ID: '+id))}catch(e){toast('ID: '+id)}};
+ const lvOf=d=>d.ver?100:Math.min(100,Math.floor((d.xp||0)/XP_PER_LV)+1);
+
+ /* ---------- 2) Cuenta eliminada por el admin: no puede seguir jugando ---------- */
+ async function kickIfRemoved(){
+  if(!ME||!fb)return false;
+  try{const r=await FS.getDoc(FS.doc(fb.db,'removed',ME.uid));if(!r.exists())return false;
+   try{await FA.signOut(fb.auth)}catch(e){}
+   ME=null;SY=false;VER=false;
+   Object.assign(prof,{name:'PLAYER',w:0,l:0,best:0,nameSet:false,xp:0,av:0,photo:'',stars:0,card:0,id:genId(),pc:0,inv:[],eq:{},ach:{},msn:null,streak:0,pcD:null});_sv();showP();
+   ['fr2','set','pfp','msn','rnk','shp','ach','on2','pv','fm','rq','ad','rkm'].forEach(i=>{if($(i))sh(i,0)});
+   modal('🚫 CUENTA ELIMINADA','Tu cuenta fue eliminada del juego.',[['ENTENDIDO',()=>openAcc()]]);
+   return true}catch(e){return false}}
+ const _lm4=loadMe;
+ loadMe=async function(){VER=false;if(await kickIfRemoved())return;await _lm4();await chkVer()};
+ setInterval(()=>{if(ME&&fb&&SY)kickIfRemoved()},60000);
+ const _fo2=$('frOut').onclick;
+ $('frOut').onclick=async function(){await _fo2.apply(this,arguments);VER=false;showP()};
+
+ /* ---------- 3) Eliminar un jugador de TODO el sistema ---------- */
+ async function delPlayer(d){
+  if(!amAdmin())return;
+  try{const id=d.id,key=d._k||d.id,uid=d.uid||'',db=fb.db,bt=FS.writeBatch(db);
+   bt.delete(FS.doc(db,'players',key));bt.delete(FS.doc(db,'missions',id));bt.delete(FS.doc(db,'queue',id));
+   /* aviso para que esa cuenta no pueda seguir (solo si no tiene otra ficha viva) */
+   if(uid){const ot=await FS.getDocs(FS.query(FS.collection(db,'players'),FS.where('uid','==',uid)));let otros=0;ot.forEach(x=>{if(x.id!==key)otros++});
+    if(!otros)bt.set(FS.doc(db,'removed',uid),{id,name:d.name||'',t:Date.now()})}
+   const nm=(d.name||'').toLowerCase();
+   if(nm){const ns=await FS.getDoc(FS.doc(db,'names',nm));if(ns.exists()&&ns.data().uid===uid)bt.delete(FS.doc(db,'names',nm))}
+   const Q=(n,f)=>FS.getDocs(FS.query(FS.collection(db,n),FS.where(f,'==',id)));
+   const sets=await Promise.all([Q('reqs','from'),Q('reqs','to'),Q('stars','from'),Q('stars','to'),Q('invites','from'),Q('invites','to')]);
+   let n=0;sets.forEach(s=>s.forEach(x=>{if(n<400){bt.delete(x.ref);n++}}));
+   await bt.commit();SFX.point();toast('🗑 Jugador eliminado');
+   if(AV==5)loadPl()
+  }catch(e){SFX.deny();toast(errEs(e))}}
+ const askDel=d=>modal('🗑 ELIMINAR JUGADOR','¿Eliminar a <b>'+esc(d.name)+'</b> (ID '+esc(d.id)+') del juego?<br><small>Desaparece del ranking y de todo el sistema. No se puede deshacer.</small>',[['SÍ, ELIMINAR',()=>delPlayer(d)],['CANCELAR',null,'tg']]);
+
+ /* ---------- panel admin: lista de JUGADORES (con duplicados marcados) ---------- */
+ $('admB4').insertAdjacentHTML('afterend','<button class="btn" id="admB5">👥 JUGADORES</button>');
+ $('admVer').insertAdjacentHTML('afterend','<div id="admPl" class="hide" style="display:flex;flex-direction:column;gap:10px"><input id="plQ" class="in" placeholder="Buscar por nombre o ID" autocomplete="off"><div class="bg"><button class="tg mn" id="plGo">🔍 BUSCAR</button><button class="tg mn" id="plFx">🔧 CORREGIR NIVELES</button></div><div id="plL" style="display:flex;flex-direction:column;gap:8px"></div></div>');
+ admView=function(n){AV=n;sh('admMenu',n==0);sh('admV',n>0);sh('admRep',n==1);sh('admById',n==2);sh('admBan',n==3);sh('admVer',n==4);sh('admPl',n==5);
+  $('admT').textContent=['','⚠ REPORTADOS','⛔ BANEAR POR ID','🚫 BANEADOS','✔ VERIFICADOS','👥 JUGADORES'][n];
+  if(n==0)cntRep();if(n==1)loadRep();if(n==3)loadBans();if(n==4)loadVer();if(n==5)loadPl()};
+ $('admB5').onclick=()=>{SFX.click();$('plQ').value='';admView(5)};
+ $('plGo').onclick=()=>{SFX.click();loadPl()};
+ $('plFx').onclick=()=>{SFX.click();fixLevels()};
+ let PLL=[];
+ async function loadPl(){const L=$('plL');L.innerHTML='<div class="pst">…</div>';
+  try{const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.orderBy('xp','desc'),FS.limit(300))),a=[];s.forEach(d=>a.push(Object.assign({},d.data(),{_k:d.id})));
+   const cn={},cu={};a.forEach(d=>{const n=(d.name||'').toLowerCase();cn[n]=(cn[n]||0)+1;if(d.uid)cu[d.uid]=(cu[d.uid]||0)+1});
+   a.forEach(d=>{d._dup=cn[(d.name||'').toLowerCase()]>1||(d.uid&&cu[d.uid]>1)});
+   const q=($('plQ').value||'').trim().toLowerCase();
+   PLL=a.filter(d=>!q||(d.name||'').toLowerCase().includes(q)||String(d.id)===q).sort((x1,x2)=>(x2._dup?1:0)-(x1._dup?1:0)||(x2.xp||0)-(x1.xp||0));
+   L.innerHTML=PLL.map((d,i)=>'<div class="rpc">'+adT(d,'NIVEL '+lvOf(d)+' · '+fmt(d.xp)+' XP'+(d._dup?' · ⚠ DUPLICADO':''))+'<div class="bg"><button class="tg mn" data-a="p" data-i="'+i+'">👤 PERFIL</button>'+(d.id===prof.id?'':'<button class="tg mn" data-a="d" data-i="'+i+'">🗑 ELIMINAR</button>')+'</div></div>').join('')||'<div class="pst">Sin jugadores</div>';
+   L.querySelectorAll('button').forEach(b=>b.onclick=()=>{SFX.click();const d=PLL[+b.dataset.i];if(b.dataset.a==='p')openPv(d.id);else askDel(d)})
+  }catch(e){L.textContent=errEs(e)}}
+ async function fixLevels(){
+  try{const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.limit(500)));let n=0;const bt=FS.writeBatch(fb.db);
+   s.forEach(x=>{const d=x.data(),L=lvOf(d);if(d.level!==L){bt.update(x.ref,{level:L});n++}});
+   if(n)await bt.commit();toast(n?'🔧 '+n+' nivel(es) corregidos':'Todo en orden');loadPl()}catch(e){toast(errEs(e))}}
+
+ /* verificados: ahora se puede quitar a cualquiera (incluso a tu propia cuenta) */
+ loadVer=async function(){const L=$('vrL');L.innerHTML='<div class="pst">…</div>';
+  try{const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.where('ver','==',true),FS.limit(50))),a=[];s.forEach(d=>a.push(d.data()));
+   L.innerHTML=a.map(d=>'<div class="rpc">'+adT(d,'✔ verificado')+'<button class="tg mn" data-i="'+esc(d.id)+'" data-n="'+esc(d.name)+'">QUITAR VERIFICADO</button></div>').join('')||'<div class="pst">Nadie verificado</div>';
+   L.querySelectorAll('button').forEach(b=>b.onclick=()=>{SFX.click();modal('QUITAR VERIFICADO','¿Quitarle el verificado a <b>'+esc(b.dataset.n)+'</b>?',[['SÍ, QUITAR',async()=>{await setVer(b.dataset.i,false);chkVer()}],['CANCELAR',null,'tg']])})
+  }catch(e){L.textContent=errEs(e)}};
+
+ /* ---------- 4) Ranking: ventanita (el admin también ve ELIMINAR) ---------- */
+ $('rkmX').insertAdjacentHTML('beforebegin','<button class="act c red hide" id="rkmDel">🗑 ELIMINAR JUGADOR</button>');
+ const rkRow2=(d,i)=>'<div class="rk"'+(i==null?' style="cursor:default"':' data-i="'+i+'"')+'><b class="rkn">'+(i==null?'':(['🥇','🥈','🥉'][i]||i+1))+'</b><div class="av" style=\'background-image:url("'+(AVS[d.av||0]||AVS[0])+'")\'></div><span class="rkt"><b>'+esc(d.name)+(d.ver?' '+VF:'')+'</b><small>NIVEL '+lvOf(d)+'</small></span><b class="rkx">'+fmt(d.xp)+' XP</b></div>';
+ let RKd=null;
+ function openRkm2(d){RKd=d;$('rkmH').innerHTML=rkRow2(d,null);sh('rkmAdd',d.id!==prof.id);sh('rkmDel',amAdmin()&&d.id!==prof.id);sh('rkm',1)}
+ $('rkmPf').onclick=()=>{SFX.click();sh('rkm',0);openPv(RKd.id)};
+ $('rkmCp').onclick=()=>{SFX.click();copyId2(RKd.id)};
+ $('rkmAdd').onclick=()=>{SFX.click();sh('rkm',0);sendReq(RKd.id)};
+ $('rkmDel').onclick=()=>{SFX.click();sh('rkm',0);askDel(RKd)};
+ $('nRk').onclick=async()=>{au();SFX.click();if(!fb||!ME){toast('Entra con tu cuenta para ver la clasificación');return}
+  sh('rnk',1);const L=$('rkL');L.innerHTML='<div class="pst">…</div>';
+  try{const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.orderBy('xp','desc'),FS.limit(20))),a=[];s.forEach(d=>a.push(Object.assign({},d.data(),{_k:d.id})));
+   L.innerHTML=a.map((d,i)=>rkRow2(d,i)).join('')||'<div class="pst">Sin jugadores</div>';
+   L.querySelectorAll('.rk').forEach(e=>e.onclick=()=>{SFX.click();openRkm2(a[+e.dataset.i])})
+  }catch(e){L.textContent=errEs(e)}};
+
+ /* ---------- 5) Correo único: "Este correo ya se utilizó" (se revisa ANTES de crear nada) ---------- */
+ const fake=u=>u.toLowerCase()+'@dmrping.app';
+ const ekp=m=>{m=m.trim().toLowerCase();const p=m.split('@');let l=p[0],d=p[1]||'';if(d==='gmail.com'||d==='googlemail.com'){l=l.split('+')[0].replace(/\./g,'');d='gmail.com'}return l+'@'+d};
+ const sha=async s=>{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(v=>v.toString(16).padStart(2,'0')).join('')};
+ const err=m=>{const a=$('aMsg');a.style.color='#ff4d5e';a.style.opacity='1';a.style.fontWeight='800';a.textContent=m?'❌ '+m:''};
+ const devUsed=()=>{try{return !!localStorage.getItem('dmr_dev')}catch(e){return false}};
+ const limitMsg=()=>{SFX.deny();modal('🚫 LÍMITE DE USUARIOS','Alcanzaste el límite de usuarios en este dispositivo.<br><small>Ya no se pueden crear más usuarios aquí.</small>',[['ENTENDIDO',null]])};
+ const pdata=()=>({uid:ME.uid,id:prof.id,name:prof.name,av:effAv(),level:plv(),stars:prof.stars||0,xp:prof.xp||0,best:prof.best||0,w:prof.w||0,l:prof.l||0,card:prof.card||0,nameSet:!!prof.nameSet});
+ async function undo(){try{if(ME)await ME.delete()}catch(e){try{await FA.signOut(fb.auth)}catch(e2){}}ME=null;SY=false}
+ let busy=0;
+ async function doAuth4(){
+  const nm=$('aNm').value.trim(),em=$('aEm').value.trim(),pw=$('aPw').value,pw2=$('aPw2').value;
+  if(!fb){err('Sin conexión con el servidor. Intenta de nuevo.');return}
+  if(acCreate){
+   if(devUsed()){limitMsg();return}
+   if(!/^[A-Za-z0-9_]{3,12}$/.test(nm)){err('Usuario: de 3 a 12 letras, números o _ (sin espacios)');return}
+   if(!/^\S+@\S+\.\S+$/.test(em)){err('Escribe un correo válido');return}
+   if(pw.length<8){err('La contraseña necesita 8 o más caracteres');return}
+   if(pw!==pw2){err('Las contraseñas no coinciden');return}
+  }else if(!nm||!pw){err('Escribe tu usuario y tu contraseña');return}
+  if(busy)return;busy=1;const a=$('aMsg');a.style.color='#fff';a.textContent='Un momento…';
+  try{
+   if(acCreate){
+    const plain=ekp(em),hk=await sha(plain),key=nm.toLowerCase();
+    for(const k of [hk,plain]){if((await FS.getDoc(FS.doc(fb.db,'emails',k))).exists()){err('Este correo ya se utilizó');return}}
+    let u;
+    try{u=(await FA.createUserWithEmailAndPassword(fb.auth,fake(nm),pw)).user}
+    catch(e){err(e.code==='auth/email-already-in-use'?'Usuario ya existe':errEs(e));return}
+    ME=u;
+    try{
+     if((await FS.getDoc(FS.doc(fb.db,'names',key))).exists())throw {code:'dup-name'};
+     let id=genId();while((await FS.getDoc(FS.doc(fb.db,'players',id))).exists())id=genId();
+     prof.id=id;prof.name=nm;prof.nameSet=false;
+     const bt=FS.writeBatch(fb.db);
+     bt.set(FS.doc(fb.db,'emails',hk),{uid:u.uid,id,t:Date.now()});
+     bt.set(FS.doc(fb.db,'names',key),{uid:u.uid,id});
+     bt.set(FS.doc(fb.db,'byUid',u.uid),{id,email:em,ek:hk});
+     bt.set(FS.doc(fb.db,'players',id),pdata());
+     await bt.commit();
+    }catch(e){await undo();err(e.code==='dup-name'?'Usuario ya existe':e.code==='permission-denied'?'Este correo ya se utilizó':errEs(e));return}
+    SY=true;_sv();showP();try{localStorage.setItem('dmr_dev',nm)}catch(e){}
+    await loadMe();
+   }else{
+    ME=(await FA.signInWithEmailAndPassword(fb.auth,nm.indexOf('@')>0?nm:fake(nm),pw)).user;
+    await loadMe();
+    if(!ME){return}
+   }
+   $('aPw').value='';$('aPw2').value='';err('');
+   $('acc').classList.add('hide');SFX.point();toast('✔ Bienvenido '+dn());
+  }catch(e){
+   err((e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found')?'Usuario o contraseña incorrectos'
+      :e.code==='auth/too-many-requests'?'Demasiados intentos. Espera un momento':errEs(e));
+  }finally{busy=0}}
+ $('aIn').onclick=doAuth4;
+})();
+
+
+
+
+
 </script>
 
 <script>
