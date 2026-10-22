@@ -2467,15 +2467,13 @@ rf9();
 })();
 
 
-/* ===== D.M.R v12: verificado del dueño · medallas TOP 3 en el perfil · ranking que se actualiza ===== */
+/* ===== D.M.R v12: verificado del dueño · medallas TOP 3 · ranking que se actualiza ===== */
 (function(){
  if(window.__dmr12)return;window.__dmr12=1;
 
- /* Tu cuenta: el correo con el que te registraste o tu usuario de Firebase.
-    Esto solo hace que el juego INTENTE verificarte. Quien manda de verdad son las reglas de Firebase (por tu UID). */
  const OWN=['martinezdonauri69@gmail.com','martinez@dmrping.app'];
 
- /* ---------- 1) VERIFICADO automático para tu cuenta (lo ve todo el mundo) ---------- */
+ /* 1) VERIFICADO automático para tu cuenta */
  let own=null,ownU='',okU='',tried=0;
  async function isOwn(){
   if(!ME||!fb)return false;
@@ -2493,8 +2491,7 @@ rf9();
   }catch(e){}}
  setInterval(ownerVerify,4000);
 
- /* ---------- 2) MEDALLAS 🥇🥈🥉 en el perfil de los 3 primeros del ranking ----------
-    Se calculan cada vez que alguien abre un perfil: si pierdes el puesto, la medalla se te quita sola. */
+ /* 2) MEDALLAS 🥇🥈🥉 en el perfil de los 3 primeros */
  document.head.insertAdjacentHTML('beforeend','<style>#cav,#pvAv{position:relative}.mdl{position:absolute;right:-9px;bottom:-9px;font-size:30px;line-height:1;pointer-events:none;filter:drop-shadow(0 0 7px rgba(255,212,0,.95))}.medl{font-size:12px;font-weight:900;letter-spacing:1px;color:#ffd400;text-shadow:0 0 8px rgba(255,212,0,.6)}</style>');
  $('chint').insertAdjacentHTML('beforebegin','<div id="cMedL" class="medl hide"></div>');
  $('pvOn').insertAdjacentHTML('afterend','<div id="pvMedL" class="medl hide"></div>');
@@ -2502,9 +2499,36 @@ rf9();
  const MD=['🥇','🥈','🥉'],ML=['PRIMER LUGAR','SEGUNDO LUGAR','TERCER LUGAR'];
  let TOP=[],TT=0;
  async function top3(){
-  if(Date.now()-TT<12000)return TOP;
+  if(Date.now()-TT<8000)return TOP;
   const s=await FS.getDocs(FS.query(FS.collection(fb.db,'players'),FS.orderBy('xp','desc'),FS.limit(3))),a=[];
+  s.forEach(d=>a.push(d.data().id||d.id));
+  TOP=a;TT=Date.now();return TOP}
+ function setMedal(avId,lblId,i){
+  const av=$(avId);let m=av.querySelector('.mdl');
+  if(i<0){if(m)m.remove();sh(lblId,0);return}
+  if(!m){m=document.createElement('span');m.className='mdl';av.appendChild(m)}
+  m.textContent=MD[i];$(lblId).textContent=MD[i]+' '+ML[i];sh(lblId,1)}
 
+ /* tu propio perfil */
+ const _pf12=$('pf').onclick;
+ $('pf').onclick=async()=>{
+  _pf12();setMedal('cav','cMedL',-1);
+  try{if(ME&&fb&&SY){await top3();setMedal('cav','cMedL',TOP.indexOf(prof.id))}}catch(e){}};
+
+ /* perfil de otro jugador */
+ const _pv12=openPv;
+ openPv=async function(id){
+  setMedal('pvAv','pvMedL',-1);
+  await _pv12(id);
+  try{await top3();setMedal('pvAv','pvMedL',TOP.indexOf(id))}catch(e){}};
+
+ /* 3) RANKING que se actualiza solo cada 15 segundos mientras está abierto */
+ function silentRk(){
+  const c=SFX.click;SFX.click=()=>{};
+  try{$('nRk').onclick()}catch(e){}finally{SFX.click=c}}
+ setInterval(()=>{
+  if(ME&&fb&&!$('rnk').classList.contains('hide')&&$('rkm').classList.contains('hide'))silentRk()},15000);
+})();
 
 </script>
 
