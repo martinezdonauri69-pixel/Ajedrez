@@ -3419,6 +3419,260 @@ $('sxBack').onclick=()=>{SFX.click();shut()};
 $('sxX').addEventListener('click',shut);
 const _o=$('nSh').onclick;$('nSh').onclick=function(){R.classList.remove('open','v');_o.apply(this,arguments)};
 })();
+
+
+/* ===== D.M.R v18: TIENDA NUEVA (pegar al FINAL, justo antes de </script>) ===== */
+(function(){
+if(window.__dmr18)return;window.__dmr18=1;
+const R={c:['COMÚN','#9aa7c7'],r:['RARO','#4da6ff'],e:['ÉPICO','#c06bff'],l:['LEGENDARIO','#ffd400'],m:['MÍTICO','#ff3df2']};
+const CN={pad:'Paleta',bl:'Pelota',tb:'Fondo',fx:'Efecto',th:'Tema'};
+const WH={pad:'tu paleta durante la partida',bl:'la pelota durante la partida',tb:'el fondo de la mesa',fx:'las chispas que salen cuando la pelota golpea una paleta o una pared',th:'los colores de los menús del juego'};
+const TB=[['pad','🏓','PALETAS'],['bl','⚪','PELOTAS'],['tb','🟦','FONDOS'],['fx','✨','EFECTOS'],['th','🎨','TEMAS'],['inv','🎒','MIS OBJETOS']];
+/* [categoría, id, nombre, precio, rareza, colores, descripción, extra] */
+const CAT=[
+['pad','','Estándar',0,'c',['#ff2233'],'La paleta roja original. Viene gratis.'],
+['pad','pa1','Básica',100,'c',['#ffffff'],'Blanca y limpia, con brillo suave.'],
+['pad','pa7','Esmeralda',200,'r',['#19e68c'],'Verde brillante, muy fácil de ver.'],
+['pad','pa8','Hielo',250,'r',['#7fe3ff'],'Celeste frío como un cubo de hielo.'],
+['pad','pa2','Fuego',300,'r',['#ff5a1f'],'Naranja ardiente, como salida de una forja.'],
+['pad','pa9','Sangre',350,'r',['#c4001a'],'Rojo oscuro e intenso.'],
+['pad','pa3','Neón',500,'e',['#00ffd0'],'Turquesa brillante, como un tubo de neón.'],
+['pad','pa10','Plasma',700,'e',['#3a8bff'],'Azul eléctrico con mucha energía.'],
+['pad','pa4','Dorada',800,'l',['#ffd400'],'Oro puro para campeones.'],
+['pad','pa5','Legendaria',1000,'l',['#ff3df2'],'Rosa galáctico que se ve desde lejos.'],
+['pad','pa6','Especial',1500,'m',['#8a5bff'],'Morado profundo del espacio exterior.'],
+['bl','','Estándar',0,'c',['#ffffff','#99ccff'],'La pelota blanca de siempre. Viene gratis.',''],
+['bl','bl1','Esmeralda',150,'c',['#19e68c','#eafff5'],'Verde con rayas que giran.','r'],
+['bl','bl2','Fuego',150,'c',['#ff5a1f','#ffd400'],'Bola de fuego con estela de llamas.','f'],
+['bl','bl3','Hielo',150,'c',['#7fe3ff','#ffffff'],'Copo de nieve que gira en el aire.','i'],
+['bl','bl4','Oro',250,'r',['#ffd400','#fff6b0'],'Dorada, con una estrella brillante.','e'],
+['bl','bl5','Corazón',250,'r',['#ff3df2','#ffd1fa'],'Rosa con un corazón y estela de colores.','c'],
+['bl','bl6','Neón',250,'e',['#00ffd0','#ffffff'],'Anillos de neón y ondas al moverse.','n'],
+['bl','bl7','Planeta',400,'e',['#8a5bff','#ffd400'],'Un planeta con su anillo dorado.','p'],
+['bl','bl8','Diamante',600,'l',['#7ff3ff','#ffffff'],'Cristal brillante con destellos.','d'],
+['bl','bl9','Sol',800,'l',['#ffb000','#fff1a0'],'Un mini sol con rayos de luz.','s'],
+['bl','bl10','Arcoíris',1200,'m',['#ff2233','#ffffff'],'Franjas de colores y estela arcoíris.','a'],
+['tb','','Estándar',0,'c',['#0a1a6a','#2a6bff'],'El fondo azul espacial original.'],
+['tb','tb4','Océano',400,'r',['#003a6a','#00d0ff'],'Azules marinos con toque de cian.'],
+['tb','tb5','Bosque',400,'r',['#023a1a','#4dff9a'],'Verde oscuro a esmeralda.'],
+['tb','tb6','Atardecer',450,'r',['#4a0a5a','#ff7a3d'],'Morado a naranja, como un ocaso.'],
+['tb','tb7','Ártico',450,'r',['#0a2a5a','#aef0ff'],'Azul profundo y hielo claro.'],
+['tb','tb1','Neón',500,'e',['#0a1a6a','#ff2f6a'],'Azul noche y rosa neón de ciudad.'],
+['tb','tb2','Volcán',500,'e',['#5a0a00','#ff9a00'],'Del rojo al naranja, en erupción.'],
+['tb','tb8','Sangre',600,'e',['#2a0004','#c4001a'],'Negro y rojo, un fondo muy serio.'],
+['tb','tb3','Galaxia',800,'l',['#12033a','#8a5bff'],'Violeta profundo de nebulosa.'],
+['tb','tb10','Oro negro',1000,'l',['#0a0a0a','#c9a227'],'Negro elegante con brillo dorado.'],
+['fx','','Estándar',0,'c',['#ffffff','#99ccff'],'Chispas blancas y azules. Viene gratis.'],
+['fx','fx1','Destellos',300,'r',['#ffd400','#ffffff'],'Estrellitas doradas al golpear.',['s',18,280,6,.7,0]],
+['fx','fx2','Llamas',300,'r',['#ff5a1f','#ffd400','#ff2233'],'Llamas que suben al golpear.',['c',24,260,6,.8,-160]],
+['fx','fx3','Hielo',300,'r',['#7fe3ff','#ffffff','#4da6ff'],'Cristales de hielo que salen volando.',['d',18,240,6,.8,0]],
+['fx','fx11','Rayos',350,'r',['#ffe94d','#ffffff'],'Rayitos eléctricos muy rápidos.',['l',16,420,14,.35,0]],
+['fx','fx4','Arcoíris',400,'e',['#ff5a8a','#ffd400','#19e68c','#4da6ff','#ff3df2'],'Cuadritos de cinco colores.',['q',30,320,6,.8,0]],
+['fx','fx6','Corazones',450,'e',['#ff3df2','#ff2f6a','#ffffff'],'Corazones que flotan hacia arriba.',['h',14,200,9,1,-80]],
+['fx','fx7','Estrellas',500,'e',['#ffd400','#7ff3ff','#ffffff'],'Lluvia de estrellas de colores.',['s',22,300,8,.9,0]],
+['fx','fx8','Onda',600,'l',['#00ffd0','#ffffff'],'Ondas de choque como en el espacio.',['o',6,160,4,.6,0]],
+['fx','fx9','Confeti',700,'l',['#ff5a8a','#ffd400','#19e68c','#4da6ff','#ff3df2'],'Fiesta de confeti en cada golpe.',['q',40,380,7,1.1,300]],
+['fx','fx10','Galaxia',1000,'m',['#8a5bff','#ff3df2','#ffffff'],'Polvo de estrellas morado y rosa.',['c',28,220,4,1.2,0]],
+['th','','Estándar',0,'c',['#ff2233','#2a6bff'],'Rojo y azul originales.'],
+['th','th1','Aurora',400,'r',['#19e68c','#00c8ff'],'Verde aurora y cian.'],
+['th','th4','Hielo',400,'r',['#7fe3ff','#2a6bff'],'Celeste glacial y azul eléctrico.'],
+['th','th6','Sakura',450,'r',['#ff7aa8','#ffd1e0'],'Rosa suave como flor de cerezo.'],
+['th','th10','Menta',450,'r',['#19e68c','#ffd400'],'Verde menta con toque dorado.'],
+['th','th2','Cósmico',600,'e',['#ff3df2','#8a5bff'],'Rosa y morado de galaxia.'],
+['th','th7','Lava',700,'e',['#ff2f00','#ffb000'],'Rojo lava y naranja.'],
+['th','th9','Medianoche',700,'e',['#2a6bff','#8a5bff'],'Azul y violeta de noche.'],
+['th','th3','Imperial',900,'l',['#ffc400','#ff5a1f'],'Dorado y naranja de lujo.'],
+['th','th8','Matrix',1200,'l',['#00ff66','#00a040'],'Verde hacker de otra dimensión.'],
+['th','th5','Púlsar',1500,'m',['#ff2f6a','#ffd400'],'Rosa y oro, el tema más raro.']];
+
+/* los objetos nuevos también entran al catálogo viejo (para que paleta, fondo y tema sigan funcionando) */
+CAT.forEach(c=>{if(!c[1])return;const o=IT.find(i=>i[1]===c[1]);if(o){o[2]=c[2];o[3]=c[3];o[4]=c[5]}else IT.push([c[0],c[1],c[2],c[3],c[5]])});
+const BS={},FXM={},STDF=[['#ffffff','#99ccff'],'q',10,220,4,.5,0];
+CAT.forEach(c=>{if(c[0]==='bl'&&c[1])BS[c[1]]=[c[7],c[5][0],c[5][1]];if(c[0]==='fx'&&c[1])FXM[c[1]]=[c[5]].concat(c[7])});
+const fxData=()=>FXM[(prof.eq||{}).fx||'']||STDF;
+
+/* ---------- dibujo de pelotas, estelas y partículas ---------- */
+function ball(g,px,py,r,id,t){const d=BS[id];g.save();g.shadowColor=d?d[1]:'#9cf';g.shadowBlur=r*2;g.fillStyle=d?d[1]:'#fff';g.beginPath();g.arc(px,py,r,0,6.283);g.fill();g.shadowBlur=0;
+ if(d){g.clip();g.translate(px,py);g.rotate(t*4);g.fillStyle=g.strokeStyle=d[2];g.lineWidth=r*.2;const k=d[0];
+  if(k==='r')for(let i=-2;i<3;i++)g.fillRect(-r,i*r*.6-r*.13,2*r,r*.26);
+  else if(k==='f'){const q=g.createRadialGradient(0,0,0,0,0,r);q.addColorStop(0,'#fff6b0');q.addColorStop(.5,d[2]);q.addColorStop(1,d[1]);g.fillStyle=q;g.fillRect(-r,-r,2*r,2*r);g.fillStyle='#ffe066';for(let i=0;i<4;i++){g.rotate(1.571);g.beginPath();g.moveTo(-r*.3,r*.2);g.lineTo(0,r*1.1);g.lineTo(r*.3,r*.2);g.fill()}}
+  else if(k==='i'){for(let i=0;i<3;i++){g.rotate(1.047);g.beginPath();g.moveTo(-r,0);g.lineTo(r,0);g.stroke()}g.beginPath();g.arc(0,0,r*.45,0,6.283);g.stroke()}
+  else if(k==='e'){g.beginPath();for(let i=0;i<10;i++){const q=i%2?r*.4:r*.95,a=i*.628;g[i?'lineTo':'moveTo'](Math.sin(a)*q,-Math.cos(a)*q)}g.fill()}
+  else if(k==='c'){g.rotate(-t*4);g.beginPath();g.moveTo(0,r*.6);g.bezierCurveTo(-r*1.1,-r*.1,-r*.5,-r*.9,0,-r*.3);g.bezierCurveTo(r*.5,-r*.9,r*1.1,-r*.1,0,r*.6);g.fill()}
+  else if(k==='n'){for(let i=1;i<4;i++){g.beginPath();g.arc(0,0,r*i/3.4,0,6.283);g.stroke()}}
+  else if(k==='p'){g.beginPath();g.ellipse(0,0,r*1.1,r*.35,.5,0,6.283);g.stroke();g.beginPath();g.arc(0,0,r*.4,0,6.283);g.fill()}
+  else if(k==='d'){g.beginPath();g.moveTo(0,-r);g.lineTo(r*.7,0);g.lineTo(0,r);g.lineTo(-r*.7,0);g.closePath();g.fill()}
+  else if(k==='s'){for(let i=0;i<8;i++){g.rotate(.785);g.beginPath();g.moveTo(r*.35,0);g.lineTo(r*1.1,0);g.stroke()}g.beginPath();g.arc(0,0,r*.3,0,6.283);g.fill()}
+  else if(k==='a'){for(let i=0;i<6;i++){g.fillStyle='hsl('+(i*60)+',100%,60%)';g.fillRect(-r,-r+i*r/3,2*r,r/3+1)}}}
+ g.restore()}
+function trail(g,tr,r,id,t){const d=BS[id],k=d?d[0]:'',c=d?d[1]:'#9cf',n=tr.length;
+ tr.forEach((q,i)=>{const u=i/n;g.globalAlpha=u*.6;
+  g.fillStyle=k==='f'?(u>.6?'#ffd400':'#ff5a1f'):k==='a'?'hsl('+((i*30+t*300)%360)+',100%,60%)':(k==='r'&&i%2)?'#fff':c;
+  if(k==='e'||k==='s'||k==='d'){if(i%2)g.fillRect(q.x+Math.sin(i*5)*5,q.y+Math.cos(i*7)*5,3,3)}
+  else{g.beginPath();g.arc(q.x,q.y-(k==='f'?(1-u)*6:0),Math.max(.1,r*u*.9),0,6.283);g.fill()}});
+ g.globalAlpha=1}
+function spawn(a,px,py,f,m){const[cols,sh,n,sp,sz,life,gr]=f;
+ for(let i=0;i<Math.ceil(n*m);i++){const an=Math.random()*6.283,v=sp*(.3+Math.random()*.7);a.push({x:px,y:py,vx:Math.cos(an)*v,vy:Math.sin(an)*v,l:life,L:life,c:cols[i%cols.length],sh,sz:sz*(.6+Math.random()*.8),g:gr||0,rot:Math.random()*6.28})}
+ for(let k=0;k<(sh==='o'?3:1);k++)a.push({ring:1,x:px,y:py,l:.45+k*.12,L:.45+k*.12,c:cols[k%cols.length],r:4+k*5,rs:(m<1?200:340)})}
+function drawP(g,a,dt){for(let i=a.length-1;i>=0;i--){const p=a[i];p.l-=dt;if(p.l<=0){a.splice(i,1);continue}
+ const u=p.l/p.L;g.globalAlpha=u;
+ if(p.ring){p.r+=p.rs*dt;g.strokeStyle=p.c;g.lineWidth=3;g.beginPath();g.arc(p.x,p.y,p.r,0,6.283);g.stroke();continue}
+ p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;p.vx*=.985;
+ g.save();g.translate(p.x,p.y);g.rotate(p.rot+p.l*3);g.fillStyle=g.strokeStyle=p.c;const s=p.sz*(.4+u*.6);
+ switch(p.sh){
+  case 'c':case 'o':g.beginPath();g.arc(0,0,s,0,6.283);g.fill();break;
+  case 'l':g.lineWidth=2;g.beginPath();g.moveTo(-s,0);g.lineTo(s,0);g.stroke();break;
+  case 'd':g.beginPath();g.moveTo(0,-s*1.3);g.lineTo(s,0);g.lineTo(0,s*1.3);g.lineTo(-s,0);g.fill();break;
+  case 's':g.beginPath();for(let k=0;k<10;k++){const q=k%2?s*.4:s*1.2,an=k*.628;g[k?'lineTo':'moveTo'](Math.sin(an)*q,-Math.cos(an)*q)}g.fill();break;
+  case 'h':g.beginPath();g.moveTo(0,s*.7);g.bezierCurveTo(-s*1.3,-s*.1,-s*.6,-s,0,-s*.35);g.bezierCurveTo(s*.6,-s,s*1.3,-s*.1,0,s*.7);g.fill();break;
+  default:g.fillRect(-s/2,-s/2,s,s)}
+ g.restore()}g.globalAlpha=1}
+
+/* ---------- EN LA PARTIDA: efecto en AMBAS paletas y en las paredes + pelota con diseño ---------- */
+const GP=[];let lvy=0;
+const _h=hit;
+hit=function(i){const e=prof.eq||(prof.eq={}),f=e.fx;e.fx='';try{_h(i)}finally{e.fx=f}
+ try{spawn(GP,B.x,B.y,fxData(),1)}catch(er){}};
+const _d=drawGame;
+drawGame=function(dt){const e=prof.eq||(prof.eq={}),sb=e.bl,sf=e.fx;e.bl='';e.fx='';
+ try{_d(dt)}finally{e.bl=sb;e.fx=sf}
+ try{
+  if(B&&mode==='play'&&!paused){if(lvy&&Math.sign(lvy)!==Math.sign(B.vy)&&(B.y<30||B.y>H-30))spawn(GP,B.x,B.y<30?9:H-9,fxData(),.4);lvy=B.vy}
+  const id=e.bl||'';
+  if(B&&B.tr&&id&&!(B.gh>0)&&fogA(B.x)>.5){x.save();trail(x,B.tr,10,id,performance.now()/1e3);ball(x,B.x,B.y,10,id,performance.now()/1e3);x.restore()}
+  x.save();drawP(x,GP,dt);x.restore()
+ }catch(er){}};
+
+/* ---------- TIENDA ---------- */
+document.head.insertAdjacentHTML('beforeend',`<style>
+#s18{position:fixed;inset:0;margin:0 auto;width:min(100%,460px);z-index:20;display:flex;flex-direction:column;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 10px;background:radial-gradient(ellipse at 15% 0%,rgba(var(--ar),.28),transparent 55%),radial-gradient(ellipse at 85% 0%,rgba(var(--bb),.32),transparent 55%),#02030c}
+#s18,#s18 *,#s8m,#s8m *{touch-action:manipulation}
+#s18 input{user-select:text;-webkit-user-select:text}
+@media(min-width:600px){#s18{top:3vh;bottom:3vh;border:2px solid var(--b);border-radius:20px;box-shadow:0 0 0 100vmax rgba(0,0,10,.82)}}
+.s8h{display:flex;align-items:center;gap:8px}.s8h b{flex:1;font-size:17px;letter-spacing:3px;text-shadow:0 0 12px var(--b)}
+.s8c{border:2px solid #ffd400;border-radius:30px;padding:6px 12px;font-weight:900;font-size:14px;color:#ffd400}
+.s8x{width:40px;height:40px;border-radius:50%;border:2px solid var(--a);background:#0a1030;color:#fff;font-size:18px;font-weight:900;flex:none}
+#s8t{display:flex;gap:6px;overflow-x:auto;flex:none}
+#s8t button{flex:none;padding:8px 12px;border-radius:12px;border:2px solid var(--b);background:#0a1030;color:#fff;font-size:12px;font-weight:800;white-space:nowrap}
+#s8t button.on{background:linear-gradient(90deg,var(--a),var(--b));border-color:#fff}
+#s8g{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-content:start;padding:4px 2px 10px}
+.s8k{border:2px solid #ffffff22;border-top:3px solid var(--rc);border-radius:14px;padding:8px 4px;background:#0a1030;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;font-size:12px;font-weight:800;cursor:pointer;min-width:0}
+.s8k:active{transform:scale(.97)}
+.s8k small{font-size:9px;font-weight:900;color:var(--rc)}
+.s8k em{font-style:normal;font-size:10px;font-weight:800;color:#ffd400}.s8k em.o{color:#8fe8ff}.s8k em.q{color:#4dff9a}
+#s8m{position:fixed;inset:0;z-index:25;background:rgba(0,0,10,.82);display:flex;align-items:center;justify-content:center;padding:12px}
+#s8p{position:relative;width:min(100%,380px);max-height:90vh;overflow-y:auto;border:2px solid var(--rc,#2a6bff);border-radius:18px;padding:14px;background:rgba(7,11,34,.98);display:flex;flex-direction:column;gap:9px;box-shadow:0 0 24px var(--rc,#2a6bff)}
+#s8p canvas{width:100%;height:auto;aspect-ratio:3/2;display:block;border-radius:12px;border:2px solid var(--rc,#2a6bff);flex:none}
+#s8p h3{font-size:19px;padding-right:46px}
+.s8cl{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:10px;border:2px solid var(--b);background:#0a1030;color:#fff;font-size:16px;font-weight:900}
+.s8r{font-size:10px;font-weight:900;letter-spacing:1px;border:2px solid;border-radius:20px;padding:2px 9px;align-self:flex-start}
+.s8s{font-size:15px;font-weight:900;color:#ffd400}.s8s .q{color:#4dff9a}.s8s .o{color:#8fe8ff}.s8s .n{display:block;font-size:12px;color:#ff6b7a}
+.s8w{display:flex;gap:8px}.s8w button{flex:1;padding:12px 8px;font-size:14px;font-weight:800;border-radius:14px;min-width:0}
+.s8w .tg{flex:0 0 76px;font-size:20px}
+.s8w button:disabled{opacity:.55}
+.s8d{font-size:13px;line-height:1.5;opacity:.92}
+</style>`);
+document.body.insertAdjacentHTML('beforeend',`<div id="s18" class="hide"><div class="s8h"><b>🛒 TIENDA</b><span class="s8c" id="s8c"></span><button class="s8x" id="s8x" type="button">✕</button></div><input id="s8q" class="in" placeholder="🔍 Buscar objeto" maxlength="24" autocomplete="off"><div id="s8t"></div><div id="s8g"></div></div><div id="s8m" class="hide"><div id="s8p"></div></div>`);
+
+let cat='pad',q='',sel=null,gxl=[],eye=0,tok=0,busy=0;
+const adm=()=>document.body.dataset.adm2==='1';
+function items(){const L=CAT.map(c=>({cat:c[0],id:c[1],name:c[2],price:c[3],rar:c[4],col:c[5],desc:c[6]}));
+ IT.filter(i=>i[1][0]==='x'&&!CAT.some(c=>c[1]===i[1])).forEach(i=>L.push({cat:i[0],id:i[1],name:i[2],price:0,rar:'e',col:i[4]||['#ccc'],desc:'Objeto exclusivo regalado por el administrador.',ex:1}));return L}
+const owned=i=>!i.id||(i.ex?(adm()||gxl.includes(i.id)):(VER||(prof.inv||[]).includes(i.id)||gxl.includes(i.id)));
+const isEq=i=>((prof.eq||{})[i.cat]||'')===i.id;
+const keyOf=i=>i.cat+':'+i.id;
+function view(){let L=items().filter(i=>!i.ex||owned(i));const s=q.trim().toLowerCase();
+ if(s)return L.filter(i=>i.id&&(i.name.toLowerCase().includes(s)||CN[i.cat].toLowerCase().includes(s)||R[i.rar][0].toLowerCase().includes(s)));
+ if(cat==='inv')return L.filter(i=>i.id&&owned(i));
+ return L.filter(i=>i.cat===cat)}
+function sw(i){const c=i.col;
+ if(i.cat==='pad')return`<i style="width:12px;height:40px;border-radius:6px;background:${c[0]};box-shadow:0 0 12px ${c[0]}"></i>`;
+ if(i.cat==='bl')return`<canvas width="64" height="64" data-b="${i.id}" style="width:36px;height:36px"></canvas>`;
+ if(i.cat==='tb')return`<i style="width:54px;height:36px;border-radius:8px;border:2px solid #fff6;background:linear-gradient(135deg,${c[0]},${c[1]||c[0]})"></i>`;
+ if(i.cat==='fx')return`<span style="display:flex;gap:3px;height:36px;align-items:center">${c.slice(0,5).map(z=>`<b style="width:8px;height:8px;border-radius:50%;background:${z};box-shadow:0 0 6px ${z}"></b>`).join('')}</span>`;
+ return`<i style="width:36px;height:36px;border-radius:50%;border:2px solid #fff8;background:linear-gradient(135deg,${c[0]} 50%,${c[1]||c[0]} 50%)"></i>`}
+function render(){
+ $('s8c').textContent='DOP '+fmt(prof.pc||0);
+ const T0=$('s8t');T0.innerHTML='';
+ TB.forEach(([k,ic,lb])=>{const b=document.createElement('button');b.type='button';b.className=(k===cat&&!q.trim())?'on':'';b.textContent=ic+' '+lb;
+  b.onclick=()=>{SFX.click();cat=k;q='';$('s8q').value='';render()};T0.appendChild(b)});
+ const G=$('s8g'),st=G.scrollTop,v=view();G.innerHTML='';
+ v.forEach(i=>{const r=R[i.rar]||R.c,e=isEq(i),h=owned(i),d=document.createElement('div');d.className='s8k';d.style.setProperty('--rc',r[1]);
+  d.innerHTML=sw(i)+'<span>'+esc(i.name)+'</span><small>'+r[0]+((cat==='inv'||q.trim())?' · '+CN[i.cat]:'')+'</small><em class="'+(e?'q':h?'o':'')+'">'+(e?'✔ EQUIPADO':h?(i.id?'COMPRADO':'INCLUIDO'):'DOP '+fmt(i.price))+'</em>';
+  d.onclick=()=>{SFX.click();sel=i;eye=0;panel();$('s8m').classList.remove('hide')};G.appendChild(d)});
+ if(!v.length)G.innerHTML='<div class="pst" style="grid-column:1/-1;padding:20px 0">'+(q.trim()?'No se encontró nada con ese nombre':'Todavía no tienes objetos comprados')+'</div>';
+ G.querySelectorAll('canvas').forEach(c=>{const g=c.getContext('2d');g.scale(2,2);ball(g,16,16,11,c.dataset.b,0)});
+ G.scrollTop=st}
+
+function panel(){const it=sel;if(!it)return;const r=R[it.rar]||R.c,h=owned(it),e=isEq(it),pcn=prof.pc||0,P=$('s8p');tok++;P.style.setProperty('--rc',r[1]);
+ if(eye){
+  P.innerHTML='<h3>'+esc(it.name)+'</h3><canvas id="s8v" width="600" height="400"></canvas><p class="s8d">👁 Así se vería en una mini partida. Es solo una vista previa: <b>no gastas nada</b>.</p><button class="btn" id="s8bk" type="button" style="min-width:0">← VOLVER</button>';
+  $('s8bk').onclick=()=>{SFX.click();eye=0;panel()};pv($('s8v'),it);return}
+ let st,bt,dis=0;
+ if(e){st='<span class="q">✔ EQUIPADO</span>';bt='✔ EQUIPADO';dis=1}
+ else if(h){st='<span class="o">✔ '+(it.id?'COMPRADO':'INCLUIDO')+'</span> · sin equipar';bt='EQUIPAR'}
+ else if(it.ex){st='EXCLUSIVO';bt='🔒 SOLO POR REGALO';dis=1}
+ else{st='DOP '+fmt(it.price)+(pcn<it.price?'<span class="n">Te faltan DOP '+fmt(it.price-pcn)+'</span>':'');bt='COMPRAR · DOP '+fmt(it.price)}
+ P.innerHTML='<button class="s8cl" id="s8cl" type="button">✕</button><h3>'+esc(it.name)+'</h3><span class="s8r" style="color:'+r[1]+';border-color:'+r[1]+'">'+r[0]+'</span><div class="s8s">'+st+'</div>'
+  +'<div class="s8w"><button class="tg" id="s8e" type="button" aria-label="Ver cómo se ve">👁</button><button class="btn" id="s8a" type="button"'+(dis?' disabled':'')+'>'+bt+'</button></div>'
+  +'<p class="s8d">'+esc(it.desc)+'</p><p class="s8d">👁 Toca el ojito para ver cómo se ve en una mini partida.</p>'
+  +'<p class="s8d">✅ <b>Qué cambia:</b> '+WH[it.cat]+'.<br>⛔ <b>Qué no cambia:</b> la velocidad ni los puntos. Nadie tiene ventaja.<br>👆 <b>Cómo se usa:</b> '+(h?'toca EQUIPAR y se usa en tus partidas.':'cómpralo con tus DOP, luego toca EQUIPAR.')+'</p>';
+ $('s8cl').onclick=()=>{SFX.click();$('s8m').classList.add('hide');tok++};
+ $('s8e').onclick=()=>{SFX.click();eye=1;panel()};
+ const a=$('s8a');if(a&&!dis)a.onclick=()=>{h?equip(it):buy18(it)}}
+$('s8m').onclick=e=>{if(e.target===$('s8m')){$('s8m').classList.add('hide');tok++}};
+
+function buy18(it){if(busy)return;busy=1;
+ try{
+  if(owned(it)||it.ex)return;
+  if((prof.pc||0)<it.price){SFX.deny();toast('Te faltan DOP '+fmt(it.price-(prof.pc||0)));return}
+  const go=()=>{if(owned(it)||(prof.pc||0)<it.price)return;
+   prof.pc-=it.price;prof.inv=prof.inv||[];if(!prof.inv.includes(it.id))prof.inv.push(it.id);
+   try{chkAch()}catch(e){}saveP();updPC();SFX.point();toast('✔ Compraste '+it.name);render();panel()};
+  if(it.price>=500)modal('CONFIRMAR COMPRA','¿Comprar <b>'+esc(it.name)+'</b> por <b>DOP '+fmt(it.price)+'</b>?',[['COMPRAR',go],['CANCELAR',null,'tg']]);else go()
+ }finally{busy=0}}
+function equip(it){if(!owned(it))return;prof.eq=prof.eq||{};prof.eq[it.cat]=it.id;saveP();
+ if(it.cat==='th'){try{applyTheme()}catch(e){}}
+ SFX.point();toast('✔ Equipado: '+it.name);render();panel()}
+
+/* ---------- vista previa (tamaño fijo, con buena calidad) ---------- */
+function pv(cv,it){const my=++tok,g=cv.getContext('2d'),th=TH[SET.th||0]||TH[0],c=it.col;
+ let A=th.a,Bc=th.b,pad=null,bl='',tb=null,f=null;
+ if(it.cat==='pad')pad=c[0];else if(it.cat==='bl')bl=it.id;else if(it.cat==='tb')tb=c;else if(it.cat==='fx')f=FXM[it.id]||STDF;else if(it.cat==='th'&&it.id){A=c[0];Bc=c[1]||c[0]}
+ let l=performance.now(),t=0,bx=44,bd=1,tr=[],P=[],py=100;
+ const rr=(a,b,w,h,r)=>{g.beginPath();g.roundRect?g.roundRect(a,b,w,h,r):g.rect(a,b,w,h)};
+ const fr=n=>{if(my!==tok||!cv.isConnected)return;
+  const dt=Math.min(.05,(n-l)/1000);l=n;t+=dt;g.setTransform(2,0,0,2,0,0);g.globalAlpha=1;
+  g.fillStyle='#02020a';g.fillRect(0,0,300,200);
+  if(tb){const q=g.createLinearGradient(0,0,300,200);q.addColorStop(0,tb[0]);q.addColorStop(1,tb[1]||tb[0]);g.fillStyle=q;g.fillRect(0,0,300,200)}else{g.fillStyle='rgba(20,70,200,.2)';g.fillRect(8,8,284,184)}
+  g.save();g.strokeStyle='#fff';g.globalAlpha=.85;g.lineWidth=2;g.shadowColor=Bc;g.shadowBlur=8;g.strokeRect(8,8,284,184);g.restore();
+  g.save();g.globalAlpha=.4;g.strokeStyle=Bc;g.lineWidth=2;g.setLineDash([6,8]);g.beginPath();g.moveTo(150,8);g.lineTo(150,192);g.stroke();g.restore();
+  const by=100+Math.sin(t*2.6)*50;bx+=bd*150*dt;
+  if(bx>=262||bx<=38){bx=Math.max(38,Math.min(262,bx));bd=-bd;spawn(P,bx+(bd>0?-8:8),by,f||STDF,1)}
+  py+=(by-py)*Math.min(1,dt*8);
+  [[14,pad||A],[274,Bc]].forEach(([px,col])=>{g.save();g.fillStyle=col;g.shadowColor=col;g.shadowBlur=14;rr(px,py-28,12,56,6);g.fill();g.restore()});
+  tr.push({x:bx,y:by});if(tr.length>14)tr.shift();
+  trail(g,tr,9,bl,t);ball(g,bx,by,9,bl,t);drawP(g,P,dt);
+  if(it.cat==='th'){g.save();g.strokeStyle=Bc;g.lineWidth=2;rr(16,14,70,22,11);g.stroke();g.fillStyle='#fff';g.font='bold 12px system-ui,Arial';g.textAlign='center';g.textBaseline='middle';g.fillText('3 - 2',51,25);
+   const q=g.createLinearGradient(90,0,210,0);q.addColorStop(0,A);q.addColorStop(1,Bc);g.fillStyle=q;rr(90,160,120,24,12);g.fill();g.fillStyle='#fff';g.fillText('▶ JUGAR',150,172);g.restore()}
+  requestAnimationFrame(fr)};
+ requestAnimationFrame(fr)}
+
+/* ---------- abrir y cerrar ---------- */
+async function loadSrv(){if(!fb||!ME||!SY)return;
+ try{const d=await pget(prof.id);if(d)gxl=d.gx||[];
+  const s=await FS.getDoc(FS.doc(fb.db,'config','specials'));
+  if(s.exists())(s.data().items||[]).forEach(i=>{if(!IT.some(z=>z[1]===i.id))IT.push([i.k,i.id,i.name,99999999,i.c])})}catch(e){}
+ if(!$('s18').classList.contains('hide'))render()}
+function closeShop(){tok++;$('s8m').classList.add('hide');$('s18').classList.add('hide')}
+$('nSh').onclick=()=>{au();SFX.click();q='';$('s8q').value='';eye=0;$('s8m').classList.add('hide');$('s18').classList.remove('hide');render();loadSrv()};
+$('s8x').onclick=()=>{SFX.click();closeShop()};
+$('s8q').oninput=e=>{q=e.target.value;render()};
+$('sx').classList.add('hide');
+})();
+
+
+
 </script>
 
 <script>
