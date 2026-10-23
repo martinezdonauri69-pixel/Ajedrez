@@ -3682,7 +3682,52 @@ $('sx').classList.add('hide');
 })();
 
 
+/* ===== ARREGLOS: tienda, vista previa y apagón ===== */
+(function(){
+ if(window.__dmrFix1)return;window.__dmrFix1=1;
 
+ /* 1) Canvas de la tienda: que no sean "fixed" (arregla pelota en la esquina y vista previa gigante en PC) */
+ document.head.insertAdjacentHTML('beforeend','<style>'
+  +'#s18 canvas,#s8m canvas{position:static!important;inset:auto!important}'
+  +'.s8k canvas{width:36px!important;height:36px!important;display:block}'
+  +'#s8p canvas{width:100%!important;height:auto!important;max-width:100%}'
+  +'#s8p{max-width:380px}'
+  +'</style>');
+
+ /* 2) Texto de la vista previa, sin hablar de gastar */
+ const p=$('s8p');
+ new MutationObserver(()=>{
+  p.querySelectorAll('.s8d').forEach(e=>{
+   if(e.textContent.includes('no gastas nada'))
+    e.innerHTML='👁 Así se vería tu objeto en una mini partida. Esto es solo una vista previa.'})
+ }).observe(p,{childList:true});
+
+ /* 3) Apagón: durante la oscuridad no se ve nada (ni pelota con diseño, ni estela, ni chispas) */
+ const _dgF=drawGame;
+ drawGame=function(dt){
+  _dgF(dt);
+  try{
+   if(typeof evOn==='function'&&evOn('apagon')){
+    const ph=evT%4;
+    if(ph>2.3&&ph<3.7){
+     x.save();
+     x.globalAlpha=Math.min(1,Math.min(ph-2.3,3.7-ph)*6);
+     x.fillStyle='#000';x.fillRect(0,0,W,H);
+     x.restore()}}
+  }catch(e){}};
+})();
+
+
+
+/* ===== AJUSTE: pelota al lado del nombre (esquinita izquierda de la tarjeta) ===== */
+(function(){
+ if(window.__dmrFix2)return;window.__dmrFix2=1;
+ document.head.insertAdjacentHTML('beforeend','<style>'
+  +'#s18 .s8k{position:relative;min-height:78px}'
+  +'#s18 .s8k canvas{position:absolute!important;left:5px!important;top:6px!important;right:auto!important;bottom:auto!important;inset:6px auto auto 5px!important;width:24px!important;height:24px!important;margin:0!important;display:block}'
+  +'#s18 .s8k:has(canvas)>span:first-of-type{padding-left:22px}'
+  +'</style>');
+})();
 </script>
 
 <script>
