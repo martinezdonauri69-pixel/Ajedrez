@@ -1,0 +1,12 @@
+{
+  "name": "D.M.R PING PONG",
+  "short_name": "D.M.R",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#02020a",
+  "theme_color": "#02020a",
+  "icons": [
+    { "src": "./logo.png", "sizes": "640x640", "type": "image/png", "purpose": "any" }
+  ]
+}
