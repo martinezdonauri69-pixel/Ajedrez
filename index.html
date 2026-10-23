@@ -2591,6 +2591,404 @@ rf9();
 
 
 
+
+/* ===== D.M.R v14: PANEL MAESTRO ===== */
+(function(){
+ if(window.__dmr14)return;window.__dmr14=1;
+ let IS_AD=false,adOK='',GRAY=new Set(),HID=new Set(),GXL=[],FNS=null,CUR=0,PREF='',REPS=[],RK=[],IBX=[],PL=null,APL=[];
+ const FIL={st:'p',sev:'0'};
+ const R=(c,i)=>FS.doc(fb.db,c,i),C=c=>FS.collection(fb.db,c),NOW=()=>Date.now();
+ const rid=()=>NOW().toString(36)+Math.random().toString(36).slice(2,8);
+ const dt=t=>t?new Date(t).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+ const ld=(el,m)=>{el.innerHTML='<div class="pst">'+(m||'Cargando…')+'</div>'};
+ const lv=d=>Math.min(100,Math.floor((d.xp||0)/XP_PER_LV)+1);
+ const GB='<span class="vg"></span>';
+ const nameLine=d=>'<b>'+esc(d.name)+(d.ver?' '+VF:'')+(d.gver?' '+GB:'')+(d.hidden?' <span class="flag">OCULTO</span>':'')+'</b><small>ID '+esc(d.id)+' · NIVEL '+lv(d)+' · '+fmt(d.xp)+' XP</small>';
+ const sure=(t,h,fn)=>modal(t,h,[['CONFIRMAR',fn],['CANCELAR',null,'tg']]);
+ const logA=(action,target,why,extra)=>FS.addDoc(C('adminLog'),Object.assign({by:ME.uid,byName:prof.name,action,target:String(target||''),why:why||'',result:'ok',t:NOW()},extra||{})).catch(()=>{});
+
+ /* ---------- estilos + insignia gris (igual que la dorada) ---------- */
+ document.head.insertAdjacentHTML('beforeend',`<style>
+ body:not([data-adm2="1"]) #nAdm{display:none!important}
+ body[data-adm2="1"] #nAdm{display:block!important}
+ #ap{z-index:38;background:rgba(0,0,12,.97);padding:0;gap:0;justify-content:flex-start}
+ #ap>.apw{margin:0!important;width:100%;max-width:760px;height:100%;display:flex;flex-direction:column}
+ .aph{display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 8px;font-size:16px;font-weight:900;letter-spacing:3px;text-shadow:0 0 12px var(--b)}
+ .apt{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px;border-bottom:1px solid #ffffff22}
+ .apt button{flex:1 1 auto;min-width:0;padding:8px 6px;font-size:11px}
+ .apt button.on{background:linear-gradient(90deg,var(--a),var(--b));border-color:#fff}
+ .apb{flex:1;overflow-y:auto;padding:12px 12px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+ .stg2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+ .stc{background:#0a1030;border:1px solid var(--b);border-radius:14px;padding:12px;text-align:center}
+ .stc b{display:block;font-size:24px;color:#8fe8ff;text-shadow:0 0 10px var(--b)}.stc small{font-size:10px;letter-spacing:1px;opacity:.75}
+ .apc{background:#0a1030;border:1px solid #ffffff2a;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;font-size:13px;text-align:left}
+ .apc small{opacity:.8;line-height:1.5}.flag{color:#ff6b7a;font-weight:800}
+ .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+ select.in{appearance:auto}textarea.in{min-height:70px;resize:vertical}
+ #ib{background:rgba(0,0,10,.85);z-index:30}
+ </style>`);
+ (function(){let p='',n=120;for(let i=0;i<n;i++){const a=i/n*6.2832,r=44+4*Math.cos(a*10);p+=(i?'L':'M')+(50+r*Math.cos(a)).toFixed(1)+' '+(50+r*Math.sin(a)).toFixed(1)}
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6f9"/><stop offset=".5" stop-color="#aab3bf"/><stop offset="1" stop-color="#6f7a88"/></linearGradient></defs><path d="'+p+'Z" fill="url(#g)" stroke="#eef1f5" stroke-width="3"/><path d="M30 52L44 66L71 36" fill="none" stroke="#3b4553" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 52L44 66L71 36" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  document.head.insertAdjacentHTML('beforeend','<style>.vg{display:inline-block;width:19px;height:19px;background:url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/contain no-repeat;vertical-align:-4px;filter:drop-shadow(0 0 5px #cfd6e0);animation:vgs 2.2s ease-in-out infinite}@keyframes vgs{50%{filter:drop-shadow(0 0 11px #fff) brightness(1.25)}}</style>')})();
+
+ /* ---------- HTML ---------- */
+ document.body.insertAdjacentHTML('beforeend',`
+ <div id="ap" class="ov hide"><div class="apw"><div class="aph"><span>🛡 PANEL MAESTRO</span><button class="sm" id="apX">✕</button></div><div class="apt" id="apT"></div><div class="apb" id="apB"></div></div></div>
+ <div id="ib" class="ov hide"><div class="panel"><h2>📩 BUZÓN</h2><div id="ibL" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn" id="ibX">VOLVER</button></div></div>`);
+ $('nAdm').textContent='🛡 PANEL MAESTRO';
+
+ /* ---------- admin real: documento admins/{uid} (solo tú lo creas en la consola) ---------- */
+ async function chkAd(){
+  if(!ME||!fb){if(IS_AD){IS_AD=false;document.body.dataset.adm2=''}return}
+  try{const s=await FS.getDoc(R('admins',ME.uid)),v=s.exists();
+   if(v!==IS_AD){IS_AD=v;document.body.dataset.adm2=v?'1':'';if(v&&!VER){VER=true;showP()}}
+   if(v&&SY&&adOK!==ME.uid){adOK=ME.uid;FS.setDoc(R('players',prof.id),{ver:true},{merge:true}).catch(()=>{adOK=''})}
+  }catch(e){}}
+ chkVer=async function(){
+  if(!ME||!fb||!SY){if(VER){VER=false;showP()}return}
+  try{const d=await pget(prof.id),v=IS_AD||!!(d&&d.ver===true&&d.uid===ME.uid);if(v!==VER){VER=v;showP()}}catch(e){}};
+
+ /* ---------- insignia gris visible para todos ---------- */
+ async function loadGray(){if(!ME||!fb)return;
+  try{const s=await FS.getDocs(FS.query(C('players'),FS.where('gver','==',true),FS.limit(200))),n=new Set();
+   s.forEach(d=>{const x=d.data();if(x.name)n.add(String(x.name).toLowerCase())});GRAY=n;
+   const h=await FS.getDocs(FS.query(C('players'),FS.where('hidden','==',true),FS.limit(200))),m=new Set();
+   h.forEach(d=>{const x=d.data();if(x.name)m.add(String(x.name).toLowerCase())});HID=m;decor()}catch(e){}}
+ function decor(){document.querySelectorAll('.idrow b,.rkt b,#pvNm,#pnT').forEach(el=>{
+  const t=(el.firstChild&&el.firstChild.nodeType===3?el.firstChild.nodeValue:'').trim().toLowerCase();
+  if(!t||!GRAY.has(t)||el.querySelector('.vg,.vf'))return;el.insertAdjacentHTML('beforeend',' '+GB)})}
+ new MutationObserver(()=>{clearTimeout(decor.t);decor.t=setTimeout(decor,150)}).observe(document.body,{childList:true,subtree:true});
+
+ /* ---------- regalos/objetos exclusivos: protegidos en el servidor (campo gx) ---------- */
+ async function loadMine(){if(!ME||!fb||!SY)return;
+  try{const s=await FS.getDoc(R('players',prof.id));if(s.exists())GXL=s.data().gx||[];
+   const c=await FS.getDoc(R('config','specials'));
+   if(c.exists())(c.data().items||[]).forEach(i=>{if(!itOf(i.id))IT.push([i.k,i.id,i.name,99999999,i.c])})}catch(e){}}
+ const _rs=rShop;rShop=function(){const v=prof.inv,all=IT.slice();prof.inv=v.concat(GXL);
+  const keep=IS_AD?all:all.filter(i=>i[1][0]!=='x'||prof.inv.includes(i[1]));
+  IT.length=0;keep.forEach(i=>IT.push(i));
+  try{_rs()}finally{IT.length=0;all.forEach(i=>IT.push(i));prof.inv=v}};
+ const _by=buy;buy=function(id){const v=prof.inv,tmp=v.concat(GXL);prof.inv=tmp;
+  try{_by(id)}finally{prof.inv=v;tmp.forEach(x=>{if(!v.includes(x)&&!GXL.includes(x))v.push(x)})}};
+
+ /* ---------- funciones de servidor (opcional) ---------- */
+ async function callFn(name,data){
+  if(!FNS){FNS=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js')}
+  return (await FNS.httpsCallable(FNS.getFunctions(fb.auth.app),name)(data)).data}
+
+ /* ---------- búsqueda ---------- */
+ async function byQ(q){q=String(q||'').trim();if(!q)return null;
+  if(/^\d{4,8}$/.test(q)){const d=await pget(q);if(d)return d}
+  const n=await FS.getDoc(R('names',q.toLowerCase()));return n.exists()?pget(n.data().id):null}
+ async function findPl(q){q=q.trim();const o=new Map();
+  if(/^\d{4,8}$/.test(q)){const d=await pget(q);if(d)o.set(d.id,d)}
+  if(q.includes('@')){const s=await FS.getDocs(FS.query(C('byUid'),FS.where('email','==',q),FS.limit(5)));
+   for(const x of s.docs){const d=await pget(x.data().id);if(d)o.set(d.id,d)}}
+  else{const s=await FS.getDocs(FS.query(C('players'),FS.where('name','>=',q),FS.where('name','<=',q+'\uf8ff'),FS.limit(15)));s.forEach(x=>o.set(x.data().id,x.data()))}
+  return [...o.values()]}
+
+ /* ---------- navegación ---------- */
+ const TABS=[['📊','General',tGen],['👥','Jugadores',tPl],['⚠','Reportes',tRep],['🎁','Regalos',tGift],['✉','Mensajes',tMsg],['🥇','Ranking',tRk],['⚙','Config',tCfg]];
+ function drawTabs(){const T=$('apT');T.innerHTML='';TABS.forEach((t,i)=>{const b=document.createElement('button');b.className='tg'+(i===CUR?' on':'');b.textContent=t[0]+' '+t[1];b.onclick=()=>{SFX.click();CUR=i;drawTabs();t[2]($('apB'))};T.appendChild(b)})}
+ $('nAdm').onclick=()=>{au();SFX.click();if(!IS_AD)return;sh('ap',1);drawTabs();TABS[CUR][2]($('apB'))};
+ $('apX').onclick=()=>{SFX.click();sh('ap',0)};
+
+ /* ---------- 1) GENERAL ---------- */
+ async function tGen(X){ld(X);
+  try{const q=(c,...w)=>FS.getCountFromServer(FS.query(C(c),...w)).then(s=>s.data().count);
+   const [tot,onl,bn,rp,ag,lg]=await Promise.all([q('players'),q('players',FS.where('seen','>',NOW()-75000)),
+    FS.getDocs(C('bans')),FS.getDocs(FS.query(C('reports'),FS.limit(300))),
+    FS.getAggregateFromServer(C('players'),{w:FS.sum('w'),l:FS.sum('l')}).catch(()=>null),
+    FS.getDocs(FS.query(C('adminLog'),FS.orderBy('t','desc'),FS.limit(10)))]);
+   let nb=0,pe=0;bn.forEach(d=>{const b=d.data();if(b.perm||b.until>NOW())nb++});rp.forEach(d=>{if((d.data().st||'p')==='p')pe++});
+   const a=ag?ag.data():null,m=a?(a.w||0)+(a.l||0):'—',L=[];lg.forEach(d=>L.push(d.data()));
+   X.innerHTML='<div class="stg2">'+[['REGISTRADOS',tot],['EN LÍNEA',onl],['PARTIDAS (V+D)',m],['REPORTES PENDIENTES',pe],['CUENTAS BLOQUEADAS',nb]].map(c=>'<div class="stc"><b>'+fmt(c[1])+'</b><small>'+c[0]+'</small></div>').join('')+'</div><div class="pst">ACTIVIDAD RECIENTE</div>'
+    +(L.map(x=>'<div class="apc"><b>'+esc(x.action)+'</b><small>'+esc(x.byName||'')+' → '+esc(x.target)+' · '+dt(x.t)+(x.why?'<br>'+esc(x.why):'')+'</small></div>').join('')||'<div class="pst">Sin actividad</div>')
+  }catch(e){X.textContent=errEs(e)}}
+
+ /* ---------- 2) JUGADORES ---------- */
+ function tPl(X){X.innerHTML='<input id="plQ2" class="in" placeholder="Nombre, ID o correo" autocomplete="off"><button class="btn" id="plGo2">🔍 BUSCAR</button><div id="plR" style="display:flex;flex-direction:column;gap:8px"></div>';
+  $('plGo2').onclick=()=>{SFX.click();plSearch()};plSearch()}
+ async function plSearch(){const L=$('plR');ld(L);
+  try{const q=$('plQ2').value;let a;
+   if(q.trim())a=await findPl(q);else{const s=await FS.getDocs(FS.query(C('players'),FS.orderBy('xp','desc'),FS.limit(15)));a=[];s.forEach(x=>a.push(x.data()))}
+   L.innerHTML=a.map((d,i)=>'<div class="apc" data-i="'+i+'" style="cursor:pointer">'+nameLine(d)+'</div>').join('')||'<div class="pst">Sin resultados</div>';
+   L.querySelectorAll('.apc').forEach(e=>e.onclick=()=>{SFX.click();plView(a[+e.dataset.i].id)})
+  }catch(e){L.textContent=errEs(e)}}
+ function plOpen(id){CUR=1;drawTabs();plView(id)}
+ const BT=d=>[['gray',d.gver?'🩶 QUITAR GRIS':'🩶 DAR GRIS'],['hide',d.hidden?'👁 MOSTRAR RANK':'🙈 OCULTAR RANK'],['warn','⚠ ADVERTIR'],['chat','🔇 CHAT'],['match','🚷 MULTIJUG.'],['temp','⛔ BLOQUEO'],['perm','🚫 BANEO PERM.'],['unban','✅ REVOCAR'],['gift','🎁 REGALAR'],['msg','✉ MENSAJE'],['xp','🛠 CORREGIR XP'],['id','🆔 CAMBIAR ID'],['pf','👤 PERFIL'],['del','🗑 ELIMINAR']];
+ async function plView(id){const X=$('apB');ld(X);
+  try{const d=await pget(id);if(!d){toast('Jugador no encontrado');return tPl(X)}PL=d;
+   const [bu,bn,sn,rp]=await Promise.all([FS.getDoc(R('byUid',d.uid||'_')),FS.getDoc(R('bans',id)),
+    FS.getDocs(FS.query(C('sanctions'),FS.where('toUid','==',d.uid||'_'),FS.limit(40))),
+    FS.getDocs(FS.query(C('reports'),FS.where('to','==',id),FS.limit(40)))]);
+   const bd=bn.exists()?bn.data():null,act=bd&&(bd.perm||bd.until>NOW()),rs=d.rstr||{};
+   const rl=['chat','match'].filter(k=>rs[k]>NOW()).map(k=>k==='chat'?'chat':'multijugador');
+   const sl=[];sn.forEach(x=>sl.push(x.data()));sl.sort((a,b)=>(b.t||0)-(a.t||0));
+   REPS=[];rp.forEach(x=>REPS.push(Object.assign({k:x.id},x.data())));
+   X.innerHTML='<button class="tg" id="pvBk">‹ ATRÁS</button><div class="apc">'+nameLine(d)+'<small>Correo: '+esc(bu.exists()?bu.data().email||'—':'—')+'<br>PongCoins: '+fmt(d.pc)+' · Victorias '+(d.w||0)+' · Derrotas '+(d.l||0)+' · Mejor nivel '+(d.best||0)+'<br>Estado: '+(act?'<span class="flag">BLOQUEADO '+(bd.perm?'(permanente)':'hasta '+dt(bd.until))+'</span>':'activo')+(rl.length?'<br>Restricciones: '+rl.join(', '):'')+'<br>Reportes recibidos: '+rp.size+'</small></div>'
+    +'<div class="g3">'+BT(d).map(b=>'<button class="tg mn" data-a="'+b[0]+'" style="font-size:10px">'+b[1]+'</button>').join('')+'</div><div class="pst">HISTORIAL DE SANCIONES</div>'
+    +(sl.map(s=>'<div class="apc"><b>'+esc(s.type)+'</b><small>'+dt(s.t)+' · por '+esc(s.byName||'')+'<br>'+esc(s.why||'')+(s.note?'<br>🗒 '+esc(s.note):'')+'</small></div>').join('')||'<div class="pst">Sin sanciones</div>');
+   $('pvBk').onclick=()=>{SFX.click();tPl(X)};
+   X.onclick=e=>{const b=e.target.closest('button[data-a]');if(b){SFX.click();plAct(b.dataset.a)}}
+  }catch(e){X.textContent=errEs(e)}}
+ function plAct(a){const d=PL;if(!d)return;
+  if(d.uid&&ME&&d.uid===ME.uid&&['warn','chat','match','temp','perm','del'].includes(a)){toast('No puedes hacerlo sobre tu propia cuenta');return}
+  if(a==='gray')return togGray(d);if(a==='hide')return togHide(d);
+  if(['warn','chat','match','temp','perm'].includes(a))return sanc(d,a,'');
+  if(a==='unban')return revoke(d);
+  if(a==='gift'){PREF=d.id;CUR=3;drawTabs();return tGift($('apB'))}
+  if(a==='msg'){PREF=d.id;CUR=4;drawTabs();return tMsg($('apB'))}
+  if(a==='xp')return xpDlg(d);if(a==='id')return chId(d);if(a==='pf')return openPv(d.id);if(a==='del')return delDlg(d)}
+ function togGray(d){const on=!d.gver;sure(on?'🩶 VERIFICADO GRIS':'QUITAR VERIFICADO GRIS',(on?'¿Dar':'¿Quitar')+' el verificado gris a <b>'+esc(d.name)+'</b>?<br><small>No da permisos ni desbloquea niveles.</small>',async()=>{
+  try{await FS.setDoc(R('players',d.id),{gver:on},{merge:true});await logA(on?'gray_on':'gray_off',d.id,'');toast(on?'🩶 Entregado':'Quitado');loadGray();plView(d.id)}catch(e){toast(errEs(e))}})}
+ function togHide(d){const on=!d.hidden;sure(on?'🙈 OCULTAR DEL RANKING':'👁 MOSTRAR EN RANKING','<b>'+esc(d.name)+'</b><br><small>No se elimina la cuenta ni el progreso.</small>',async()=>{
+  try{await FS.setDoc(R('players',d.id),{hidden:on},{merge:true});await logA(on?'rank_hide':'rank_show',d.id,'');toast('✔ Listo');loadGray();plView(d.id)}catch(e){toast(errEs(e))}})}
+
+ /* sanciones */
+ const SN={warn:['⚠ ADVERTENCIA',0],chat:['🔇 RESTRINGIR CHAT',1],match:['🚷 RESTRINGIR MULTIJUGADOR',1],temp:['⛔ BLOQUEO TEMPORAL',1],perm:['🚫 BANEO PERMANENTE',0]};
+ const DURS=[['1 hora',60],['1 día',1440],['3 días',4320],['7 días',10080],['30 días',43200]];
+ function sanc(d,type,rk){const [lab,nd]=SN[type];
+  const rs=REPS.filter(r=>r.to===d.id).slice(0,4).map(r=>'• '+esc(r.why||'')+(r.desc?': '+esc(r.desc):'')).join('<br>')||'Sin reportes registrados';
+  modal(lab,'<div class="pst" style="text-align:left">Jugador: <b>'+esc(d.name)+'</b> · ID '+esc(d.id)+'</div><div class="apc" style="margin:8px 0"><small><b>PRUEBAS / REPORTES:</b><br>'+rs+'</small></div>'
+   +(nd?'<select id="snD" class="in" style="margin-bottom:8px">'+DURS.map(x=>'<option value="'+x[1]+'">'+x[0]+'</option>').join('')+'<option value="0">Personalizada (minutos)</option></select><input id="snM" class="in" inputmode="numeric" placeholder="Minutos (solo si Personalizada)" style="margin-bottom:8px">':'')
+   +'<input id="snW" class="in" maxlength="200" placeholder="Motivo (obligatorio)"><input id="snN" class="in" maxlength="300" placeholder="Nota interna (opcional)" style="margin-top:8px">',
+   [['APLICAR',()=>{const why=$('snW').value.trim(),note=$('snN').value.trim();let mins=0;
+     if(nd){mins=+$('snD').value||Math.floor(+$('snM').value);if(!(mins>=1&&mins<=525600)){toast('Indica la duración');return sanc(d,type,rk)}}
+     if(why.length<5){toast('Escribe el motivo (obligatorio)');return sanc(d,type,rk)}
+     doSanc(d,type,mins,why,note,rk)}],['CANCELAR',null,'tg']])}
+ async function doSanc(d,type,mins,why,note,rk){
+  const t=NOW(),until=type==='perm'?0:(mins?t+mins*60000:0),bt=FS.writeBatch(fb.db);
+  if(type==='temp'||type==='perm')bt.set(R('bans',d.id),{id:d.id,name:d.name,perm:type==='perm',until,why,by:prof.id,t});
+  if(type==='chat'||type==='match')bt.set(R('players',d.id),{rstr:{[type]:until}},{merge:true});
+  bt.set(FS.doc(C('sanctions')),{to:d.id,toUid:d.uid||'',name:d.name,type,why,note:note||'',until,mins:mins||0,by:ME.uid,byName:prof.name,t});
+  bt.set(FS.doc(C('inbox')),{toUid:d.uid||'',to:d.id,kind:'sanction',title:SN[type][0],body:why+(until?' · hasta '+dt(until):''),t,read:false});
+  bt.set(FS.doc(C('adminLog')),{by:ME.uid,byName:prof.name,action:'sanction_'+type,target:d.id,why,note:note||'',result:'ok',t});
+  if(rk)bt.update(R('reports',rk),{st:'ok',res:'Sanción: '+type,resBy:prof.name,resT:t});
+  try{await bt.commit();SFX.point();toast('✔ Sanción aplicada');plView(d.id)}catch(e){toast(errEs(e))}}
+ function revoke(d){modal('✅ REVOCAR SANCIONES','Levantar bloqueos y restricciones de <b>'+esc(d.name)+'</b><input id="rvW" class="in" maxlength="200" placeholder="Justificación (obligatoria)" style="margin-top:10px">',[['REVOCAR',async()=>{
+  const w=$('rvW').value.trim();if(w.length<5){toast('Escribe la justificación');return revoke(d)}
+  const bt=FS.writeBatch(fb.db),t=NOW();
+  bt.delete(R('bans',d.id));bt.set(R('players',d.id),{rstr:{chat:0,match:0}},{merge:true});
+  bt.set(FS.doc(C('sanctions')),{to:d.id,toUid:d.uid||'',name:d.name,type:'revoke',why:w,by:ME.uid,byName:prof.name,t});
+  bt.set(FS.doc(C('inbox')),{toUid:d.uid||'',to:d.id,kind:'sanction',title:'✅ SANCIÓN LEVANTADA',body:w,t,read:false});
+  bt.set(FS.doc(C('adminLog')),{by:ME.uid,byName:prof.name,action:'sanction_revoke',target:d.id,why:w,result:'ok',t});
+  try{await bt.commit();toast('✅ Revocado');plView(d.id)}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])}
+
+ /* corrección de XP (aviso: el cliente del jugador puede volver a escribir su XP local) */
+ function xpDlg(d){modal('🛠 CORREGIR XP','<b>'+esc(d.name)+'</b> · XP actual '+fmt(d.xp)+'<input id="xpN" class="in" inputmode="numeric" placeholder="Nuevo XP" style="margin-top:10px"><input id="xpW" class="in" maxlength="200" placeholder="Motivo (obligatorio)" style="margin-top:8px">',[['APLICAR',async()=>{
+  const n=Math.floor(+$('xpN').value),w=$('xpW').value.trim();if(!(n>=0&&n<=49500)||w.length<5){toast('Revisa XP y motivo');return xpDlg(d)}
+  try{await FS.setDoc(R('players',d.id),{xp:n,level:Math.min(100,Math.floor(n/XP_PER_LV)+1)},{merge:true});await logA('xp_fix',d.id,w,{old:d.xp||0,new:n});toast('✔ XP corregido');plView(d.id)}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])}
+
+ /* cambiar ID (para tu 0880) */
+ async function moveId(d,nw){
+  if(!/^\d{4,8}$/.test(nw))throw {message:'ID: de 4 a 8 números'};
+  if((await FS.getDoc(R('players',nw))).exists())throw {message:'Ese ID ya existe'};
+  const pd=d,bt=FS.writeBatch(fb.db);
+  bt.set(R('players',nw),Object.assign({},pd,{id:nw}));bt.delete(R('players',pd.id));
+  if(pd.uid){bt.set(R('byUid',pd.uid),{id:nw},{merge:true});
+   const bu=await FS.getDoc(R('byUid',pd.uid));if(bu.exists()&&bu.data().ek)bt.set(R('emails',bu.data().ek),{id:nw},{merge:true})}
+  const nm=(pd.name||'').toLowerCase();if(nm)bt.set(R('names',nm),{id:nw},{merge:true});
+  const ms=await FS.getDoc(R('missions',pd.id));if(ms.exists()){bt.set(R('missions',nw),ms.data());bt.delete(R('missions',pd.id))}
+  for(const c of ['reqs','stars'])for(const f of ['from','to']){
+   const s=await FS.getDocs(FS.query(C(c),FS.where(f,'==',pd.id)));
+   s.forEach(x=>{const q=x.data(),nf=q.from===pd.id?nw:q.from,nt=q.to===pd.id?nw:q.to;bt.set(R(c,nf+'_'+nt),Object.assign({},q,{from:nf,to:nt}));bt.delete(x.ref)})}
+  await bt.commit();
+  if(ME&&pd.uid===ME.uid){prof.id=nw;saveP()}}
+ function chId(d){modal('🆔 CAMBIAR ID','ID actual: <b>'+esc(d.id)+'</b><input id="ciN" class="in" inputmode="numeric" maxlength="8" placeholder="Nuevo ID (ej. 0880)" style="margin-top:10px">',[['CAMBIAR',async()=>{
+  const n=$('ciN').value.trim();
+  try{await moveId(d,n);await logA('change_id',d.id+'→'+n,'');toast('✔ ID cambiado. Recarga el juego');plView(n)}catch(e){SFX.deny();toast(errEs(e))}}],['CANCELAR',null,'tg']])}
+
+ /* eliminar cuenta */
+ function delDlg(d){modal('🗑 ELIMINAR CUENTA','Se eliminará <b>PERMANENTEMENTE</b> a <b>'+esc(d.name)+'</b> (ID '+esc(d.id)+'):<br><small>• ficha, nivel, XP y monedas<br>• misiones, buzón, amistades, solicitudes y estrellas<br>• nombre de usuario y acceso de inicio de sesión<br>No se puede deshacer. La auditoría solo guarda el ID.<br>Para solo quitarlo del ranking usa OCULTAR RANK.</small><input id="dlC" class="in" placeholder="Escribe el nombre exacto para confirmar" style="margin-top:10px">',[['ELIMINAR',async()=>{
+  if($('dlC').value.trim()!==d.name){toast('El nombre no coincide');return delDlg(d)}
+  try{await callFn('deleteAccount',{id:d.id});toast('🗑 Cuenta eliminada');tPl($('apB'))}
+  catch(e){modal('FUNCIÓN NO DISPONIBLE','El servidor no eliminó la cuenta:<br><small>'+esc(e.message||e.code)+'</small><br><br>¿Eliminar solo los datos del juego y bloquear el acceso? El usuario de login seguirá existiendo.',[['SÍ, SOLO DATOS',()=>softDel(d)],['CANCELAR',null,'tg']])}}],['CANCELAR',null,'tg']])}
+ async function softDel(d){
+  try{const bt=FS.writeBatch(fb.db),nm=(d.name||'').toLowerCase();
+   [['players',d.id],['missions',d.id],['queue',d.id],['bans',d.id]].forEach(([c,i])=>bt.delete(R(c,i)));
+   if(nm)bt.delete(R('names',nm));if(d.uid)bt.set(R('removed',d.uid),{id:d.id,t:NOW()});
+   const qs=await Promise.all([['reqs','from'],['reqs','to'],['stars','from'],['stars','to']].map(([c,f])=>FS.getDocs(FS.query(C(c),FS.where(f,'==',d.id),FS.limit(60)))));
+   qs.forEach(s=>s.forEach(x=>bt.delete(x.ref)));
+   const ib=await FS.getDocs(FS.query(C('inbox'),FS.where('toUid','==',d.uid||'_'),FS.limit(60)));ib.forEach(x=>bt.delete(x.ref));
+   bt.set(FS.doc(C('adminLog')),{by:ME.uid,byName:prof.name,action:'delete_account_partial',target:d.id,why:'sin Cloud Function',result:'ok',t:NOW()});
+   await bt.commit();toast('🗑 Datos eliminados');tPl($('apB'))}catch(e){toast(errEs(e))}}
+
+ /* ---------- 3) REPORTES ---------- */
+ const ST={p:'Pendiente',r:'En revisión',ok:'Resuelto',no:'Rechazado',esc:'Escalado'},SEVI=['','🟢','🟠','🔴'];
+ async function tRep(X){ld(X);
+  try{const [s,ap]=await Promise.all([FS.getDocs(FS.query(C('reports'),FS.limit(300))),FS.getDocs(FS.query(C('appeals'),FS.limit(30)))]);
+   REPS=[];s.forEach(d=>REPS.push(Object.assign({k:d.id,st:'p',sev:1,cat:'otro'},d.data())));
+   APL=[];ap.forEach(d=>APL.push(d.data()));drawRep(X)}catch(e){X.textContent=errEs(e)}}
+ function drawRep(X){
+  const f=REPS.filter(r=>(FIL.st==='all'||r.st===FIL.st)&&(FIL.sev==='0'||r.sev>=+FIL.sev)),g={};
+  f.forEach(r=>(g[r.to]=g[r.to]||[]).push(r));
+  const bf={};REPS.forEach(r=>{const o=bf[r.from]=bf[r.from]||{n:0,no:0};o.n++;if(r.st==='no')o.no++});
+  const ks=Object.keys(g).sort((a,b)=>Math.max(...g[b].map(r=>r.sev))-Math.max(...g[a].map(r=>r.sev))||g[b].length-g[a].length);
+  X.innerHTML='<div class="bg"><select id="fS" class="in"><option value="all">Todos</option>'+Object.keys(ST).map(k=>'<option value="'+k+'"'+(FIL.st===k?' selected':'')+'>'+ST[k]+'</option>').join('')+'</select><select id="fV" class="in"><option value="0">Toda gravedad</option><option value="2"'+(FIL.sev==='2'?' selected':'')+'>🟠 Media o más</option><option value="3"'+(FIL.sev==='3'?' selected':'')+'>🔴 Alta</option></select></div>'
+   +(ks.map(to=>{const a=g[to].sort((x,y)=>(y.t||0)-(x.t||0));
+    return '<div class="apc"><b>'+esc(a[0].toName||'ID '+to)+' <span class="flag">('+a.length+' reporte(s))</span></b>'+a.slice(0,5).map(r=>{const o=bf[r.from],ab=o.n>=5&&o.no/o.n>=.6;
+     return '<div class="apc" style="background:#070b22"><small>'+SEVI[r.sev]+' <b>'+esc(r.why||r.cat)+'</b> · '+ST[r.st]+' · '+dt(r.t)+'<br>De: '+esc(r.fromName||r.from)+(ab?' <span class="flag">⚠ posible denuncia abusiva</span>':'')+(r.desc?'<br>'+esc(r.desc):'')+(r.res?'<br>📝 '+esc(r.res):'')+(r.notes||[]).map(n=>'<br>🗒 '+esc(n.txt)).join('')+'</small><div class="g3"><button class="tg mn" data-a="st" data-k="'+esc(r.k)+'">ESTADO</button><button class="tg mn" data-a="sa" data-k="'+esc(r.k)+'">SANCIONAR</button><button class="tg mn" data-a="nt" data-k="'+esc(r.k)+'">NOTA</button></div></div>'}).join('')
+     +'<button class="tg mn" data-a="pf" data-t="'+esc(to)+'">👤 PERFIL E HISTORIAL</button></div>'}).join('')||'<div class="pst">Sin reportes con este filtro</div>')
+   +'<div class="pst">APELACIONES</div>'+(APL.map((a,i)=>'<div class="apc"><b>'+esc(a.name)+'</b><small>ID '+esc(a.id)+' · '+dt(a.t)+'<br>'+esc(a.txt)+'</small><div class="bg"><button class="tg mn" data-a="av" data-i="'+i+'">✅ REVOCAR BAN</button><button class="tg mn" data-a="ax" data-i="'+i+'">✖ RECHAZAR</button></div></div>').join('')||'<div class="pst">Sin apelaciones</div>');
+  $('fS').onchange=e=>{FIL.st=e.target.value;drawRep(X)};$('fV').onchange=e=>{FIL.sev=e.target.value;drawRep(X)};
+  X.onclick=async e=>{const b=e.target.closest('button[data-a]');if(!b)return;SFX.click();const a=b.dataset.a,r=REPS.find(z=>z.k===b.dataset.k);
+   if(a==='pf')return plOpen(b.dataset.t);
+   if(a==='sa'){const d=await pget(r.to);if(!d){toast('El jugador ya no existe');return}
+    return modal('SANCIÓN','Elige la sanción para <b>'+esc(d.name)+'</b>',Object.keys(SN).map(k=>[SN[k][0],()=>sanc(d,k,r.k)]).concat([['CANCELAR',null,'tg']]))}
+   if(a==='st')return stDlg(r);if(a==='nt')return ntDlg(r);
+   const ap=APL[+b.dataset.i];
+   if(a==='av'){const d=await pget(ap.id);if(d)revoke(d);return}
+   if(a==='ax'){try{await FS.deleteDoc(R('appeals',ap.uid));await logA('appeal_reject',ap.id,'');tRep(X)}catch(er){toast(errEs(er))}}}}
+ function stDlg(r){modal('ESTADO DEL REPORTE','<select id="stS" class="in">'+Object.keys(ST).map(k=>'<option value="'+k+'"'+(k===r.st?' selected':'')+'>'+ST[k]+'</option>').join('')+'</select><input id="stR" class="in" maxlength="200" placeholder="Resolución / comentario" style="margin-top:8px">',[['GUARDAR',async()=>{
+  const st=$('stS').value,res=$('stR').value.trim();if(['ok','no','esc'].includes(st)&&res.length<3){toast('Escribe la resolución');return stDlg(r)}
+  try{await FS.updateDoc(R('reports',r.k),{st,res,resBy:prof.name,resT:NOW()});await logA('report_'+st,r.to,res);tRep($('apB'))}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])}
+ function ntDlg(r){modal('🗒 NOTA INTERNA','<input id="ntT" class="in" maxlength="300" placeholder="Nota (solo la ve el admin)">',[['GUARDAR',async()=>{
+  const x=$('ntT').value.trim();if(!x)return;
+  try{await FS.updateDoc(R('reports',r.k),{notes:FS.arrayUnion({t:NOW(),by:prof.name,txt:x})});tRep($('apB'))}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])}
+
+ /* ---------- 4) REGALOS (solo DOP y objetos; los niveles se ganan jugando) ---------- */
+ async function tGift(X){const pf=PREF;PREF='';
+  const kn={pad:'paleta',bl:'pelota',tb:'mesa',fx:'efecto'};
+  X.innerHTML='<input id="gT" class="in" placeholder="Destinatario: ID o nombre" value="'+esc(pf)+'"><select id="gK" class="in"><option value="coins">DOP (monedas)</option><option value="item">Objeto</option></select><input id="gA" class="in" inputmode="numeric" maxlength="6" placeholder="Cantidad de DOP (1 a 100000)"><select id="gI" class="in hide">'+IT.map(i=>'<option value="'+esc(i[1])+'">'+(i[1][0]==='x'?'★ ':'')+esc(i[2])+' ('+kn[i[0]]+')</option>').join('')+'</select><input id="gW" class="in" maxlength="140" placeholder="Motivo (obligatorio)"><button class="btn" id="gGo">🎁 ENTREGAR</button><small class="mini">Los objetos ★ exclusivos solo se pueden dar a verificados gris.</small><div class="pst">HISTORIAL DE REGALOS</div><div id="gH" style="display:flex;flex-direction:column;gap:8px"><div class="pst">…</div></div>';
+  $('gK').onchange=()=>{const c=$('gK').value==='coins';sh('gA',c);sh('gI',!c)};
+  $('gGo').onclick=async()=>{SFX.click();const kind=$('gK').value,why=$('gW').value.trim();
+   let d;try{d=await byQ($('gT').value)}catch(e){toast(errEs(e));return}
+   if(!d){toast('Destinatario no encontrado');return}if(why.length<4){toast('Escribe el motivo');return}
+   let amount=0,item='';
+   if(kind==='coins'){amount=Math.floor(+$('gA').value);if(!(amount>=1&&amount<=100000)){toast('Cantidad: 1 a 100000');return}}
+   else{item=$('gI').value;if(item[0]==='x'&&!d.gver){toast('Los objetos exclusivos son solo para verificados gris');return}}
+   const it=IT.find(i=>i[1]===item);
+   sure('🎁 CONFIRMAR REGALO','Para <b>'+esc(d.name)+'</b> (ID '+esc(d.id)+')<br>'+(kind==='coins'?'DOP '+fmt(amount):esc(it?it[2]:item))+'<br><small>Motivo: '+esc(why)+'</small>',()=>sendGift(d,kind,amount,item,why,it?it[2]:''))};
+  try{const s=await FS.getDocs(FS.query(C('gifts'),FS.orderBy('t','desc'),FS.limit(15))),a=[];s.forEach(x=>a.push(x.data()));
+   $('gH').innerHTML=a.map(g=>'<div class="apc"><b>'+esc(g.toName||g.to)+'</b><small>'+(g.kind==='coins'?'DOP '+fmt(g.amount):'Objeto '+esc(g.item))+' · '+dt(g.t)+'<br>'+esc(g.why)+'</small></div>').join('')||'<div class="pst">Sin regalos</div>'}catch(e){$('gH').textContent=errEs(e)}}
+ async function sendGift(d,kind,amount,item,why,nm){
+  const gid=[d.id,kind,item||amount,why.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,24)].join('_'),t=NOW(),bt=FS.writeBatch(fb.db);
+  bt.set(R('gifts',gid),{to:d.id,toUid:d.uid||'',toName:d.name,kind,amount,item,why,by:ME.uid,t});
+  bt.set(FS.doc(C('inbox')),{toUid:d.uid||'',to:d.id,kind:'gift',title:'🎁 REGALO',body:why+' · '+(kind==='coins'?'DOP '+fmt(amount):nm),t,read:false,claimed:kind!=='coins',gift:{type:kind,amount,item}});
+  if(item)bt.set(R('players',d.id),{gx:FS.arrayUnion(item)},{merge:true});
+  bt.set(FS.doc(C('adminLog')),{by:ME.uid,byName:prof.name,action:'gift_'+kind,target:d.id,why,result:'ok',t,amount,item});
+  try{await bt.commit();SFX.point();toast('🎁 Regalo entregado');tGift($('apB'))}
+  catch(e){SFX.deny();toast(e.code==='permission-denied'?'Ya se procesó este regalo (cambia el motivo para repetirlo)':errEs(e))}}
+
+ /* ---------- 5) MENSAJES Y CORREOS ---------- */
+ let TPL=[];
+ async function tMsg(X){const pf=PREF;PREF='';
+  X.innerHTML='<select id="mM" class="in"><option value="pm">✉ Mensaje privado (buzón)</option><option value="an">📢 Anuncio global</option><option value="gr">🩶 Mensaje a verificados gris</option><option value="em">📧 Correo electrónico</option></select><input id="mT" class="in" placeholder="Destinatario: ID o nombre ("verificados" en correo = todos los gris)" value="'+esc(pf)+'"><select id="mTp" class="in hide"></select><input id="mS" class="in" maxlength="100" placeholder="Título / asunto"><textarea id="mB" class="in" maxlength="1500" placeholder="Mensaje. En correos puedes usar {name}"></textarea><div class="bg"><button class="btn" id="mGo" style="min-width:0">ENVIAR</button><button class="tg hide" id="mSv">💾 GUARDAR PLANTILLA</button></div><div class="pst">ÚLTIMOS CORREOS</div><div id="mL" style="display:flex;flex-direction:column;gap:8px"></div>';
+  const M=$('mM'),mode=()=>{const m=M.value;sh('mT',m==='pm'||m==='em');sh('mTp',m==='em');sh('mSv',m==='em')};
+  M.onchange=()=>{mode();if(M.value==='em')loadTp()};mode();loadMl();
+  $('mSv').onclick=()=>{const s=$('mS').value.trim(),b=$('mB').value.trim();if(!s||!b){toast('Escribe asunto y texto');return}
+   modal('💾 PLANTILLA','<input id="tpN" class="in" maxlength="30" placeholder="Nombre de la plantilla">',[['GUARDAR',async()=>{const n=$('tpN').value.trim();if(!n)return;
+    try{await FS.setDoc(R('templates',rid()),{name:n,subject:s,text:b,t:NOW()});toast('💾 Guardada');loadTp()}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])};
+  $('mTp').onchange=()=>{const t=TPL[+$('mTp').value];if(t){$('mS').value=t.subject;$('mB').value=t.text}};
+  $('mGo').onclick=async()=>{SFX.click();const m=M.value,ti=$('mS').value.trim(),bo=$('mB').value.trim();
+   if(!ti||!bo){toast('Escribe título y mensaje');return}
+   if(m==='pm'){const d=await byQ($('mT').value);if(!d){toast('Destinatario no encontrado');return}
+    try{await FS.addDoc(C('inbox'),{toUid:d.uid||'',to:d.id,kind:'msg',title:ti,body:bo,t:NOW(),read:false});await logA('message',d.id,ti);toast('✉ Enviado');$('mB').value=''}catch(e){toast(errEs(e))}return}
+   if(m==='an')return sure('📢 ANUNCIO GLOBAL','Lo verán <b>todos</b> los jugadores.',async()=>{try{await FS.addDoc(C('announcements'),{title:ti,body:bo,t:NOW(),by:prof.name});await logA('announce','all',ti);toast('📢 Publicado')}catch(e){toast(errEs(e))}});
+   if(m==='gr')return sure('🩶 A VERIFICADOS','Se enviará a todos los verificados gris.',async()=>{try{
+    const s=await FS.getDocs(FS.query(C('players'),FS.where('gver','==',true),FS.limit(300)));let n=0,bt=FS.writeBatch(fb.db);
+    for(const x of s.docs){const p=x.data();bt.set(FS.doc(C('inbox')),{toUid:p.uid||'',to:p.id,kind:'msg',title:ti,body:bo,t:NOW(),read:false});if(++n%400===0){await bt.commit();bt=FS.writeBatch(fb.db)}}
+    await bt.commit();await logA('message_gray','gray',ti,{n});toast('🩶 Enviado a '+n)}catch(e){toast(errEs(e))}});
+   const raw=$('mT').value.trim();let ids=[];
+   try{if(raw.toLowerCase()==='verificados'){const s=await FS.getDocs(FS.query(C('players'),FS.where('gver','==',true),FS.limit(50)));s.forEach(x=>ids.push(x.data().id))}
+    else{const d=await byQ(raw);if(d)ids=[d.id]}}catch(e){toast(errEs(e));return}
+   if(!ids.length){toast('Destinatario no encontrado');return}
+   sure('📧 ENVIAR CORREO','A <b>'+ids.length+'</b> destinatario(s).',async()=>{toast('Enviando…');
+    try{const r=await callFn('sendMail',{ids,subject:ti,text:bo}),ok=r.filter(x=>x.status==='sent').length;
+     modal('📧 RESULTADO','Enviados: <b>'+ok+'</b> de '+r.length+r.filter(x=>x.status!=='sent').map(x=>'<br><small class="flag">ID '+esc(x.id)+': '+esc(x.error)+'</small>').join(''),[['OK',null]]);loadMl()}
+    catch(e){modal('📧 NO SE ENVIÓ','El servidor no pudo enviar el correo:<br><small>'+esc(e.message||e.code)+'</small><br><small>Revisa que la función sendMail esté desplegada.</small>',[['OK',null]])}})}}
+ async function loadTp(){try{const s=await FS.getDocs(C('templates'));TPL=[];s.forEach(x=>TPL.push(x.data()));
+  $('mTp').innerHTML='<option value="-1">— Plantilla —</option>'+TPL.map((t,i)=>'<option value="'+i+'">'+esc(t.name)+'</option>').join('')}catch(e){}}
+ async function loadMl(){const L=$('mL');if(!L)return;
+  try{const s=await FS.getDocs(FS.query(C('mailLog'),FS.orderBy('t','desc'),FS.limit(8))),a=[];s.forEach(x=>a.push(x.data()));
+   L.innerHTML=a.map(x=>'<div class="apc"><small><b>'+(x.status==='sent'?'✔ enviado':'<span class="flag">✖ falló</span>')+'</b> · ID '+esc(x.to)+' · '+dt(x.t)+'<br>'+esc(x.subject)+(x.error?'<br>'+esc(x.error):'')+'</small></div>').join('')||'<div class="pst">Sin correos</div>'}catch(e){L.textContent=errEs(e)}}
+
+ /* ---------- 6) RANKING ---------- */
+ async function tRk(X){ld(X);
+  try{const s=await FS.getDocs(FS.query(C('players'),FS.orderBy('xp','desc'),FS.limit(50)));RK=[];s.forEach(d=>RK.push(d.data()));
+   X.innerHTML='<div class="bg"><input id="sN" class="in" maxlength="30" placeholder="Nombre de temporada"><button class="btn" id="sSv" style="min-width:0">💾 GUARDAR</button></div><div class="pst">TOP 50 (el admin ve a los ocultos)</div>'
+    +RK.map((d,i)=>{const mx=(d.w||0)*120+(d.l||0)*10,sus=(d.xp||0)>mx+150;
+     return '<div class="apc"><b>'+(i+1)+'. '+esc(d.name)+(d.ver?' '+VF:'')+(d.gver?' '+GB:'')+(d.hidden?' <span class="flag">OCULTO</span>':'')+'</b><small>ID '+esc(d.id)+' · '+fmt(d.xp)+' XP · '+(d.w||0)+'V/'+(d.l||0)+'D'+(sus?' <span class="flag">⚠ XP sospechoso (esperado ≤ '+fmt(mx)+')</span>':'')+'</small><div class="g3"><button class="tg mn" data-a="hd" data-i="'+i+'">'+(d.hidden?'MOSTRAR':'OCULTAR')+'</button><button class="tg mn" data-a="xp" data-i="'+i+'">CORREGIR XP</button><button class="tg mn" data-a="pf" data-i="'+i+'">PERFIL</button></div></div>'}).join('')
+    +'<div class="pst">TEMPORADAS GUARDADAS</div><div id="sL" style="display:flex;flex-direction:column;gap:8px"></div>';
+   X.onclick=e=>{const b=e.target.closest('button[data-a]');if(!b)return;SFX.click();const d=RK[+b.dataset.i];
+    if(b.dataset.a==='hd')return togHide(d);if(b.dataset.a==='xp')return xpDlg(d);if(b.dataset.a==='pf')return plOpen(d.id)};
+   $('sSv').onclick=async()=>{SFX.click();const n=$('sN').value.trim();if(n.length<2){toast('Pon nombre a la temporada');return}
+    try{await FS.setDoc(R('seasons',rid()),{name:n,t:NOW(),top:RK.filter(d=>!d.hidden).slice(0,50).map(d=>({id:d.id,name:d.name,xp:d.xp||0,level:lv(d)}))});await logA('season_save','',n);toast('💾 Temporada guardada');tRk(X)}catch(e){toast(errEs(e))}};
+   const ss=await FS.getDocs(FS.query(C('seasons'),FS.orderBy('t','desc'),FS.limit(10))),A=[];ss.forEach(x=>A.push(x.data()));
+   $('sL').innerHTML=A.map((z,i)=>'<div class="apc" data-i="'+i+'" style="cursor:pointer"><b>'+esc(z.name)+'</b><small>'+dt(z.t)+' · '+z.top.length+' jugadores</small></div>').join('')||'<div class="pst">Sin temporadas</div>';
+   $('sL').querySelectorAll('.apc').forEach(e=>e.onclick=()=>{const z=A[+e.dataset.i];modal('🏆 '+esc(z.name),'<div style="text-align:left;font-size:13px;max-height:50vh;overflow:auto">'+z.top.slice(0,15).map((p,i)=>(i+1)+'. <b>'+esc(p.name)+'</b> · '+fmt(p.xp)+' XP').join('<br>')+'</div>',[['OK',null]])})
+  }catch(e){X.textContent=errEs(e)}}
+ /* ranking público: oculta a los jugadores ocultos (sin borrar nada) */
+ const _nrk=$('nRk').onclick;
+ $('nRk').onclick=async function(){await _nrk.apply(this,arguments);await loadGray();
+  let i=0;document.querySelectorAll('#rkL .rk').forEach(r=>{const n=((r.querySelector('.rkt b')||{}).textContent||'').trim().toLowerCase();
+   if(HID.has(n)){r.remove();return}const k=r.querySelector('.rkn');if(k)k.textContent=['🥇','🥈','🥉'][i]||(i+1);i++})};
+
+ /* ---------- 7) CONFIG ---------- */
+ async function tCfg(X){ld(X);
+  try{const [m,sp,an]=await Promise.all([FS.getDoc(R('config','mail')),FS.getDoc(R('config','specials')),FS.getDocs(FS.query(C('announcements'),FS.orderBy('t','desc'),FS.limit(10)))]);
+   const items=(sp.exists()?sp.data().items:[])||[],A=[];an.forEach(x=>A.push(Object.assign({id:x.id},x.data())));
+   X.innerHTML='<div class="apc"><b>📧 REMITENTE DE CORREOS</b><input id="cfF" class="in" maxlength="120" placeholder="D.M.R <no-reply@tudominio.com>" value="'+esc(m.exists()?m.data().from||'':'')+'"><button class="tg" id="cfFs">GUARDAR</button><small>Debe ser un dominio verificado en tu proveedor de correo.</small></div>'
+    +'<div class="apc"><b>★ CREAR OBJETO ESPECIAL</b><select id="spK" class="in"><option value="pad">Paleta</option><option value="bl">Pelota</option><option value="tb">Mesa</option><option value="fx">Efecto</option></select><input id="spN" class="in" maxlength="20" placeholder="Nombre"><div class="bg"><input id="spC1" type="color" class="in" value="#c0c8d4" style="height:44px;padding:4px"><input id="spC2" type="color" class="in" value="#6a7585" style="height:44px;padding:4px"></div><button class="tg" id="spGo">CREAR</button><small>Solo se consigue por regalo (a verificados gris).</small>'
+    +items.map((i,n)=>'<div class="rw"><small>★ '+esc(i.name)+' ('+i.k+')</small><button class="tg mn" data-a="ds" data-i="'+n+'">BORRAR</button></div>').join('')+'</div>'
+    +'<div class="apc"><b>📢 ANUNCIOS PUBLICADOS</b>'+(A.map((a,n)=>'<div class="rw"><small>'+esc(a.title)+' · '+dt(a.t)+'</small><button class="tg mn" data-a="da" data-i="'+n+'">BORRAR</button></div>').join('')||'<small>Ninguno</small>')+'</div>'
+    +'<div class="apc"><b>🆔 MI CUENTA</b><small>ID: '+esc(prof.id)+'</small><button class="tg" id="cfId">CAMBIAR MI ID (ej. 0880)</button></div>';
+   $('cfFs').onclick=async()=>{SFX.click();try{await FS.setDoc(R('config','mail'),{from:$('cfF').value.trim()},{merge:true});await logA('config_mail','','');toast('✔ Guardado')}catch(e){toast(errEs(e))}};
+   $('spGo').onclick=async()=>{SFX.click();const n=$('spN').value.trim();if(n.length<2){toast('Pon un nombre');return}
+    try{await FS.setDoc(R('config','specials'),{items:FS.arrayUnion({id:'x'+rid(),k:$('spK').value,name:n,c:[$('spC1').value,$('spC2').value]})},{merge:true});await logA('special_new','',n);toast('★ Creado');tCfg(X)}catch(e){toast(errEs(e))}};
+   $('cfId').onclick=async()=>{SFX.click();const d=await pget(prof.id);if(d)chId(d)};
+   X.onclick=e=>{const b=e.target.closest('button[data-a]');if(!b)return;SFX.click();
+    if(b.dataset.a==='ds')sure('BORRAR OBJETO','¿Borrar el objeto especial?',async()=>{try{await FS.setDoc(R('config','specials'),{items:items.filter((_,n)=>n!==+b.dataset.i)},{merge:true});tCfg(X)}catch(er){toast(errEs(er))}});
+    if(b.dataset.a==='da')sure('BORRAR ANUNCIO','¿Borrar este anuncio?',async()=>{try{await FS.deleteDoc(R('announcements',A[+b.dataset.i].id));tCfg(X)}catch(er){toast(errEs(er))}})}
+  }catch(e){X.textContent=errEs(e)}}
+
+ /* ---------- JUGADOR: reportar con categorías ---------- */
+ const CATS=[['trampas','Trampas',3],['exploit','Uso de exploits',3],['insultos','Insultos',2],['acoso','Acoso',3],['nombre','Nombre inapropiado',2],['spam','Spam',1],['bug','Abuso de errores',2],['ranking','Manipulación del ranking',3],['otro','Otro',1]];
+ $('fmRep').onclick=()=>{SFX.click();const d=FMc;if(!d)return;sh('fm',0);
+  modal('⚠ REPORTAR','Reportar a <b>'+esc(d.name)+'</b><select id="rpC" class="in" style="margin:10px 0 8px">'+CATS.map(c=>'<option value="'+c[0]+'">'+c[1]+'</option>').join('')+'</select><textarea id="rpD" class="in" maxlength="300" placeholder="Describe lo ocurrido (mínimo 10 caracteres)"></textarea>',
+   [['ENVIAR REPORTE',async()=>{const c=CATS.find(z=>z[0]===$('rpC').value)||CATS[8],ds=$('rpD').value.trim();
+     if(ds.length<10){toast('Describe lo ocurrido (mínimo 10 caracteres)');return $('fmRep').onclick()}
+     try{await FS.setDoc(R('reports',prof.id+'_'+d.id+'_'+NOW()),{from:prof.id,to:d.id,fromName:prof.name,toName:d.name,cat:c[0],sev:c[2],why:c[1],desc:ds,st:'p',match:null,t:NOW()});toast('⚠ Reporte enviado')}catch(e){toast(errEs(e))}}],['CANCELAR',null,'tg']])};
+
+ /* ---------- JUGADOR: apelación desde la pantalla de suspensión ---------- */
+ $('bnOut').insertAdjacentHTML('beforebegin','<textarea id="apT2" class="in" maxlength="400" placeholder="Apelación: explica por qué crees que fue un error" style="min-height:70px"></textarea><div id="apM" class="pst"></div><button class="tg" id="apSend">📨 ENVIAR APELACIÓN</button>');
+ $('apSend').onclick=async()=>{const t=$('apT2').value.trim();if(t.length<10){$('apM').textContent='Escribe al menos 10 caracteres';return}
+  try{await FS.setDoc(R('appeals',ME.uid),{uid:ME.uid,id:prof.id,name:prof.name,txt:t,t:NOW()});$('apT2').value='';$('apM').textContent='✔ Apelación enviada'}
+  catch(e){$('apM').textContent=e.code==='permission-denied'?'Ya enviaste una apelación. Espera la respuesta.':errEs(e)}};
+
+ /* ---------- JUGADOR: buzón (mensajes, anuncios, regalos) ---------- */
+ $('tpFr').insertAdjacentHTML('afterend','<button class="gear" id="tpIb" aria-label="Buzón">📩<i class="bdg hide" id="tpIbd"></i></button>');
+ $('tpIb').onclick=()=>{au();SFX.click();if(!ME||!fb){toast('Entra con tu cuenta');return}openIb()};
+ $('ibX').onclick=()=>{SFX.click();sh('ib',0);pollIb()};
+ async function openIb(){sh('ib',1);const L=$('ibL');ld(L);
+  try{const [a,b]=await Promise.all([FS.getDocs(FS.query(C('inbox'),FS.where('toUid','==',ME.uid),FS.limit(60))),FS.getDocs(FS.query(C('announcements'),FS.orderBy('t','desc'),FS.limit(15)))]);
+   IBX=[];a.forEach(x=>IBX.push(Object.assign({id:x.id,_c:'i'},x.data())));b.forEach(x=>IBX.push(Object.assign({id:x.id,_c:'a'},x.data())));
+   IBX.sort((p,q)=>(q.t||0)-(p.t||0));
+   L.innerHTML=IBX.map(x=>'<div class="apc"><b>'+(x._c==='a'?'📢 ':'')+esc(x.title)+(x._c==='i'&&!x.read?' <span class="flag">●</span>':'')+'</b><small>'+esc(x.body)+'<br>'+dt(x.t)+'</small>'+(x.gift&&x.claimed===false?'<button class="tg mn" data-c="'+esc(x.id)+'">🎁 RECLAMAR DOP '+fmt(x.gift.amount)+'</button>':'')+'</div>').join('')||'<div class="pst">Sin mensajes</div>';
+   L.onclick=e=>{const b2=e.target.closest('button[data-c]');if(b2){SFX.click();claimG(b2.dataset.c)}};
+   const un=IBX.filter(x=>x._c==='i'&&!x.read);if(un.length){const bt=FS.writeBatch(fb.db);un.forEach(x=>bt.update(R('inbox',x.id),{read:true}));bt.commit().catch(()=>{})}
+   try{localStorage.setItem('dmr_ann',String(NOW()))}catch(e){}
+  }catch(e){L.textContent=errEs(e)}}
+ async function claimG(id){const it=IBX.find(x=>x.id===id);if(!it||!it.gift)return;
+  try{await FS.updateDoc(R('inbox',id),{claimed:true,read:true});
+   if(it.gift.type==='coins'){prof.pc=(prof.pc||0)+it.gift.amount;saveP();updPC()}
+   SFX.point();toast('🎁 ¡Regalo reclamado!');openIb()}catch(e){toast(errEs(e))}}
+ async function pollIb(){if(!ME||!fb||!SY){sh('tpIbd',0);return}
+  try{const a=await FS.getDocs(FS.query(C('inbox'),FS.where('toUid','==',ME.uid),FS.where('read','==',false),FS.limit(10)));let n=a.size,seen=0;
+   try{seen=+(localStorage.getItem('dmr_ann')||0)}catch(e){}
+   const b=await FS.getDocs(FS.query(C('announcements'),FS.where('t','>',seen),FS.limit(5)));n+=b.size;sh('tpIbd',n>0)}catch(e){}}
+
+ /* ---------- arranque ---------- */
+ const tick=()=>{if(ME&&fb&&SY){chkAd();loadGray();loadMine();pollIb()}};
+ setInterval(tick,20000);setInterval(chkAd,4000);
+ const k0=setInterval(()=>{if(SY){tick();clearInterval(k0)}},1000);
+})();
+
+
+
+
+
 </script>
 
 <script>
