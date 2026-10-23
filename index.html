@@ -3728,6 +3728,37 @@ $('sx').classList.add('hide');
   +'#s18 .s8k:has(canvas)>span:first-of-type{padding-left:22px}'
   +'</style>');
 })();
+
+
+
+/* ===== TIENDA: quitar barras blancas feas y poner un diseño neón ===== */
+(function(){
+ if(window.__dmrFix3)return;window.__dmrFix3=1;
+ document.head.insertAdjacentHTML('beforeend','<style>'
+  /* pestañas de arriba: sin barra blanca */
+  +'#s8t{scrollbar-width:none;-ms-overflow-style:none;padding-bottom:8px;position:relative}'
+  +'#s8t::-webkit-scrollbar{display:none;width:0;height:0}'
+  /* línea neón de adorno debajo de las pestañas */
+  +'#s8t::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--a),var(--b),transparent);box-shadow:0 0 8px var(--b);pointer-events:none}'
+  /* barra del lado: fina, neón y redondeada */
+  +'#s8g{scrollbar-width:thin;scrollbar-color:var(--b) transparent}'
+  +'#s8g::-webkit-scrollbar{width:6px}'
+  +'#s8g::-webkit-scrollbar-track{background:transparent}'
+  +'#s8g::-webkit-scrollbar-thumb{border-radius:6px;background:linear-gradient(180deg,var(--a),var(--b));box-shadow:0 0 8px var(--b)}'
+  +'#s8g::-webkit-scrollbar-button{display:none;width:0;height:0}'
+  +'#s8p{scrollbar-width:thin;scrollbar-color:var(--b) transparent}'
+  +'#s8p::-webkit-scrollbar{width:5px}'
+  +'#s8p::-webkit-scrollbar-thumb{border-radius:5px;background:linear-gradient(180deg,var(--a),var(--b))}'
+  +'#s8p::-webkit-scrollbar-button{display:none}'
+  +'</style>');
+
+ /* en PC, la rueda del mouse mueve las pestañas de lado a lado */
+ const t=$('s8t');
+ t.addEventListener('wheel',e=>{
+  if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){t.scrollLeft+=e.deltaY;e.preventDefault()}
+ },{passive:false});
+})();
+
 </script>
 
 <script>
