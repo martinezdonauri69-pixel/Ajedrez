@@ -3009,214 +3009,320 @@ rf9();
 
 
 
-
-
-/* ===== D.M.R v15 · PARTE 1: tu progreso (DOP, logros, compras) ya no se pierde ===== */
+/* ===== D.M.R v16: TIENDA PROFESIONAL (selección + vista previa al lado) ===== */
 (function(){
- if(window.__dmr15a)return;window.__dmr15a=1;
- const FIELDS=['pc','inv','eq','ach','streak','pcD'];
- const bkKey=()=>ME?'dmr_bk_'+ME.uid:null;
- const snap=()=>{const o={ts:Date.now()};FIELDS.forEach(k=>{o[k]=prof[k]});return o};
- function bkSave(){const k=bkKey();if(!k||!SY)return;try{localStorage.setItem(k,JSON.stringify(snap()))}catch(e){}}
+ if(window.__dmr16)return;window.__dmr16=1;
 
- let tmr=0,failT=0,warned=0;
- async function push(){
-  if(!ME||!fb||!SY)return;
-  const d=snap();
-  try{
-   await FS.setDoc(FS.doc(fb.db,'players',prof.id),{
-    uid:ME.uid,pc:d.pc||0,inv:d.inv||[],eq:d.eq||{},ach:d.ach||{},streak:d.streak||0,pcD:d.pcD||null,
-    xp:prof.xp||0,best:prof.best||0,w:prof.w||0,l:prof.l||0,sv:d.ts
-   },{merge:true});
-   warned=0;
-  }catch(e){
-   if(!warned){warned=1;toast('⚠ No se guardó en el servidor ('+errEs(e)+'). Queda guardado en este teléfono')}
-   clearTimeout(failT);failT=setTimeout(push,30000)}}
+ /* ---------- temas comprables: se añaden al catálogo ---------- */
+ [['th1','Aurora Verde',400,['#19e68c','#00c8ff']],
+  ['th2','Púrpura Cósmico',600,['#ff3df2','#8a5bff']],
+  ['th3','Oro Imperial',900,['#ffc400','#ff5a1f']],
+  ['th4','Hielo Ártico',400,['#7fe3ff','#2a6bff']],
+  ['th5','Pulsar',1500,['#ff2f6a','#ffd400']]
+ ].forEach(([id,nm,pr,c])=>{if(!IT.some(i=>i[1]===id))IT.push(['th',id,nm,pr,c])});
 
- /* cada vez que algo cambia: copia local (por cuenta) + subida al servidor */
- const _sp=saveP;
- saveP=function(){_sp();bkSave();clearTimeout(tmr);tmr=setTimeout(push,700)};
- document.addEventListener('visibilitychange',()=>{if(document.hidden){bkSave();push()}});
- addEventListener('pagehide',()=>{bkSave();push()});
+ /* ---------- datos estructurados del catálogo ---------- */
+ const CATS=[['pad','🏓','PALETAS'],['bl','⚪','PELOTAS'],['tb','🟦','FONDOS'],['fx','✨','EFECTOS'],['th','🎨','TEMAS']];
+ const CK=CATS.map(c=>c[0]);
+ const CN={pad:'Paleta',bl:'Pelota',tb:'Fondo',fx:'Efecto',th:'Tema'};
+ const RAR={comun:['COMÚN','#9aa7c7'],raro:['RARO','#4da6ff'],epico:['ÉPICO','#c06bff'],leg:['LEGENDARIO','#ffd400'],mit:['MÍTICO','#ff3df2']};
+ const STD={
+  pad:{col:['#ff2233'],d:'La paleta roja original de D.M.R. Sin adornos, lista para jugar.',f:['Color rojo clásico','Brillo estándar','Incluida gratis']},
+  bl:{col:['#ffffff'],d:'La pelota blanca brillante de siempre, con su estela celeste.',f:['Color blanco','Estela celeste','Incluida gratis']},
+  tb:{col:['#0a1a6a','#2a6bff'],d:'El fondo espacial azul original, con las estrellas en movimiento.',f:['Azul espacial','Borde luminoso','Incluido gratis']},
+  fx:{col:['#ffffff','#99ccff'],d:'Chispas blancas y azules cada vez que golpeas la pelota.',f:['Chispas blancas y azules','Efecto estándar','Incluido gratis']},
+  th:{col:['#ff2233','#2a6bff'],d:'El tema rojo y azul original de toda la interfaz.',f:['Rojo y azul','Bordes luminosos','Incluido gratis']}};
+ const META={
+  pa1:{r:'comun',d:'La paleta blanca de toda la vida. Limpia, sencilla y con un brillo suave.',f:['Color blanco puro','Brillo suave','Solo cosmética']},
+  pa2:{r:'raro',d:'Naranja ardiente, como recién salida de una forja. Cada golpe se ve cálido.',f:['Color naranja fuego','Brillo cálido','Solo cosmética']},
+  pa3:{r:'epico',d:'Turquesa neón con aspecto de tubo luminoso. Resalta en cualquier fondo oscuro.',f:['Color turquesa neón','Brillo intenso','Solo cosmética']},
+  pa4:{r:'leg',d:'Oro puro para los campeones. La paleta más elegante de la cancha.',f:['Color dorado','Brillo de lujo','Solo cosmética']},
+  pa5:{r:'leg',d:'Rosa galáctico con un resplandor que se ve desde el otro lado de la mesa.',f:['Color rosa galáctico','Brillo legendario','Solo cosmética']},
+  pa6:{r:'mit',d:'Morado profundo del espacio exterior. Un objeto especial para jugadores de élite.',f:['Color morado cósmico','Brillo mítico','Solo cosmética']},
+  bl1:{r:'comun',d:'Verde esmeralda brillante, muy fácil de seguir a gran velocidad.',f:['Pelota verde esmeralda','Estela del mismo color','Brillo medio']},
+  bl2:{r:'comun',d:'Una bola de fuego naranja que deja una estela ardiente.',f:['Pelota naranja fuego','Estela del mismo color','Brillo cálido']},
+  bl3:{r:'comun',d:'Azul glacial con destellos fríos. Limpia y rápida a la vista.',f:['Pelota azul hielo','Estela del mismo color','Brillo frío']},
+  bl4:{r:'raro',d:'Dorada y reluciente, como una moneda lanzada al espacio.',f:['Pelota dorada','Estela del mismo color','Brillo dorado']},
+  bl5:{r:'raro',d:'Rosa neón con un brillo muy llamativo.',f:['Pelota rosa neón','Estela del mismo color','Brillo vivo']},
+  bl6:{r:'epico',d:'Turquesa neón de alta intensidad. Imposible perderla de vista.',f:['Pelota turquesa neón','Estela del mismo color','Brillo intenso']},
+  tb1:{r:'epico',d:'Degradado de azul oscuro a rosa neón. Ambiente de ciudad futurista.',f:['Azul noche y rosa neón','Se aplica al iniciar la partida','Solo cosmética']},
+  tb2:{r:'epico',d:'Del rojo oscuro al naranja: una cancha en plena erupción.',f:['Rojo volcán y naranja','Se aplica al iniciar la partida','Solo cosmética']},
+  tb3:{r:'leg',d:'Violeta profundo con aire de nebulosa. El fondo más espacial de todos.',f:['Violeta galáctico','Se aplica al iniciar la partida','Solo cosmética']},
+  tb4:{r:'raro',d:'Azules marinos con un toque de cian, como el fondo del océano.',f:['Azul océano y cian','Se aplica al iniciar la partida','Solo cosmética']},
+  tb5:{r:'raro',d:'Verde oscuro a verde esmeralda. Calma en mitad del espacio.',f:['Verde bosque y esmeralda','Se aplica al iniciar la partida','Solo cosmética']},
+  fx1:{r:'raro',d:'Destellos dorados y blancos al golpear la pelota.',f:['Partículas doradas','Brillo al golpear','Solo cosmética']},
+  fx2:{r:'raro',d:'Llamas naranjas y amarillas que salen disparadas con cada golpe.',f:['Partículas de fuego','Brillo cálido','Solo cosmética']},
+  fx3:{r:'raro',d:'Cristales de hielo y escarcha al golpear la pelota.',f:['Partículas de hielo','Brillo frío','Solo cosmética']},
+  fx4:{r:'epico',d:'Una explosión de cinco colores en cada golpe.',f:['5 colores de partículas','Más vistoso','Solo cosmética']},
+  th1:{r:'raro',d:'Verde aurora y cian. Cambia los bordes y botones de toda la interfaz.',f:['Verde y cian','Cambia los colores de la interfaz','Solo cosmética']},
+  th2:{r:'epico',d:'Rosa y morado cósmico para una interfaz muy galáctica.',f:['Rosa y morado','Cambia los colores de la interfaz','Solo cosmética']},
+  th3:{r:'leg',d:'Dorado y naranja imperial. Una interfaz de lujo.',f:['Dorado y naranja','Cambia los colores de la interfaz','Solo cosmética']},
+  th4:{r:'raro',d:'Celeste glacial y azul eléctrico.',f:['Celeste y azul','Cambia los colores de la interfaz','Solo cosmética']},
+  th5:{r:'mit',d:'Rosa púlsar con destellos de oro. El tema más raro del juego.',f:['Rosa y oro','Cambia los colores de la interfaz','Solo cosmética']}};
 
- /* al entrar: si la copia de este teléfono es más nueva que la del servidor, se recupera */
- const _lm=loadMe;
- loadMe=async function(){
-  await _lm();
-  if(!ME||!fb||!SY)return;
-  try{
-   const raw=localStorage.getItem(bkKey());
-   if(raw){
-    const b=JSON.parse(raw),s=await FS.getDoc(FS.doc(fb.db,'players',prof.id)),sv=s.exists()?(s.data().sv||0):0;
-    if(b&&b.ts>sv){
-     FIELDS.forEach(k=>{if(b[k]!==undefined&&b[k]!==null)prof[k]=b[k]});
-     try{_sv()}catch(e){}
-     showP();updPC();toast('♻ Progreso recuperado')}}
-  }catch(e){}
-  push()};
-})();
+ let cat='pad',q='',selKey='pad:',busy=false,GX=[],SPE={},CURI=null,tok=0;
+ const IS_ADM=()=>document.body.dataset.adm2==='1';
+ const rarByPrice=p=>p>=1500?'mit':p>=800?'leg':p>=500?'epico':p>=300?'raro':'comun';
 
+ /* ---------- catálogo completo (datos → tarjetas y panel) ---------- */
+ function items(){
+  const L=[];
+  CATS.forEach(([k])=>{const s=STD[k];L.push({key:k+':',id:'',cat:k,name:'Estándar',rar:'comun',price:0,desc:s.d,feat:s.f,col:s.col,std:1})});
+  IT.forEach(i=>{
+   const k=i[0],id=i[1];if(!CK.includes(k))return;
+   const ex=id[0]==='x';if(ex&&!IS_ADM()&&!GX.includes(id))return;
+   const m=META[id]||{};
+   L.push({key:k+':'+id,id,cat:k,name:i[2],rar:m.r||SPE[id]||(ex?'epico':rarByPrice(i[3])),price:ex?0:i[3],
+    desc:m.d||(ex?'Objeto exclusivo creado por el administrador. No se puede comprar.':'Objeto cosmético para tu partida.'),
+    feat:m.f||(ex?['Edición exclusiva','Solo por regalo','Solo cosmética']:['Solo cosmética']),col:i[4]||['#667'],ex})});
+  return L}
+ const isEq=it=>((prof.eq||{})[it.cat]||'')===it.id;
+ const owned=it=>{
+  if(it.std)return true;
+  if(it.ex)return IS_ADM()||GX.includes(it.id);
+  return !!VER||(prof.inv||[]).includes(it.id)||GX.includes(it.id)};
+ function view(){
+  const all=items(),qq=q.trim().toLowerCase();
+  if(qq)return all.filter(i=>!i.std&&(i.name.toLowerCase().includes(qq)||RAR[i.rar][0].toLowerCase().includes(qq)||CN[i.cat].toLowerCase().includes(qq)));
+  if(cat==='inv')return all.filter(i=>!i.std&&owned(i));
+  return all.filter(i=>i.cat===cat)}
+ function cur(){
+  const v=view();let it=items().find(i=>i.key===selKey);
+  if(!it||!v.some(i=>i.key===it.key))it=v[0]||null;
+  if(it)selKey=it.key;return it}
+ const eqKey=k=>k+':'+((prof.eq||{})[k]||'');
 
-/* ===== D.M.R v15 · PARTE 2: CREAR OBJETO ESPECIAL con vista previa en vivo ===== */
-(function(){
- if(window.__dmr15b)return;window.__dmr15b=1;
- const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
- const RC={raro:['RARO','#4da6ff'],epico:['ÉPICO','#c06bff'],leg:['LEGENDARIO','#ffd400'],mit:['MÍTICO','#ff3df2']};
- const KN=[['pad','🏓 PALETA'],['bl','⚪ PELOTA'],['tb','🟦 MESA'],['fx','✨ EFECTO']];
- const NT={pad:1,bl:1,tb:2,fx:3};
- const PR=[
-  ['pad','Plasma','leg',['#00e5ff']],
-  ['pad','Corona Real','mit',['#ffd400']],
-  ['pad','Neón Verde','epico',['#39ff14']],
-  ['bl','Eléctrica','epico',['#4df3ff']],
-  ['bl','Galáctica','leg',['#b46bff']],
-  ['bl','Sol Dorado','mit',['#ffd400']],
-  ['tb','Nebulosa Morada','epico',['#2a0a5a','#ff3df2']],
-  ['tb','Universo Dorado','leg',['#3a2a00','#ffd400']],
-  ['tb','Ciberespacio','raro',['#001a2a','#00ffd0']],
-  ['fx','Fuegos Artificiales','mit',['#ff2233','#ffd400','#19e68c','#2a6bff','#ff3df2']],
-  ['fx','Chispas Eléctricas','epico',['#ffffff','#4df3ff','#2a6bff']]];
-
+ /* ---------- estilos ---------- */
  document.head.insertAdjacentHTML('beforeend',`<style>
- .dsg{display:flex;flex-direction:column;gap:10px;margin:8px 0}
- #dsC{width:100%;aspect-ratio:320/170;border-radius:14px;background:#02020a;border:2px solid var(--rc,#2a6bff);box-shadow:0 0 18px var(--rc,#2a6bff)}
- .dsr{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
- .dsc{flex:1 1 auto;padding:8px 10px;border-radius:12px;border:2px solid var(--b);background:#0a1030;color:#fff;font-size:12px;font-weight:800;touch-action:manipulation}
- .dsc.on{background:linear-gradient(90deg,var(--a),var(--b));border-color:#fff}
- .dsw{position:relative;display:block;width:46px;height:46px;border-radius:50%;border:3px solid #fff;overflow:hidden;box-shadow:0 0 10px #0008;flex:none}
- .dsw input{position:absolute;left:-8px;top:-8px;width:calc(100% + 16px);height:calc(100% + 16px);border:0;padding:0;background:none;opacity:0;touch-action:auto}
- .dsm{width:46px;height:46px;border-radius:50%;border:2px dashed #fff8;background:#0a1030;color:#fff;font-size:22px;font-weight:900;flex:none;touch-action:manipulation}
+ #sx{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 10px calc(8px + env(safe-area-inset-bottom,0px));background:radial-gradient(ellipse at 15% 0%,rgba(var(--ar),.28),transparent 55%),radial-gradient(ellipse at 85% 0%,rgba(var(--bb),.32),transparent 55%),#02030c;animation:sxIn .22s ease-out}
+ @keyframes sxIn{from{opacity:0;transform:scale(.97)}}
+ #sx,#sx *{touch-action:manipulation}
+ #sxQ{flex:1 1 170px;min-width:0;padding:9px 12px;font-size:14px;border-radius:12px;user-select:text;-webkit-user-select:text}
+ .sxH{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:none}
+ .sxTt{font-size:17px;letter-spacing:3px;text-shadow:0 0 12px var(--b);margin-right:auto}
+ .sxCoin{background:#070b22cc;border:2px solid #ffd400;border-radius:30px;padding:6px 12px;font-weight:900;font-size:14px;color:#ffd400;box-shadow:0 0 12px #ffd40055}
+ .sxX{width:40px;height:40px;border-radius:50%;border:2px solid var(--a);background:#0a1030;color:#fff;font-size:18px;font-weight:900;flex:none}
+ .sxB{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:10px}
+ .sxL{display:flex;flex-direction:column;gap:8px;min-height:0}
+ .sxT{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;flex:none}
+ .sxTb{flex:none;padding:8px 12px;border-radius:12px;border:2px solid var(--b);background:#0a1030;color:#fff;font-size:12px;font-weight:800;white-space:nowrap}
+ .sxTb.on{background:linear-gradient(90deg,var(--a),var(--b));border-color:#fff}
+ .sxG{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;padding:4px 2px 10px;align-content:start}
+ .sxR{overflow-y:auto;border:2px solid var(--b);border-radius:18px;padding:12px;background:rgba(7,11,34,.96);box-shadow:0 0 22px rgba(var(--bb),.45);display:flex;flex-direction:column;gap:9px;min-height:0}
+ .sxPv{display:block;width:100%;aspect-ratio:3/2;border-radius:14px;border:2px solid var(--rc,#2a6bff);box-shadow:0 0 18px var(--rc,#2a6bff);background:#02020a;flex:none}
+ .sxPv.sxGl{animation:sxg 2s ease-in-out infinite}
+ @keyframes sxg{50%{box-shadow:0 0 30px var(--rc)}}
+ .sxNm{display:flex;align-items:center;justify-content:space-between;gap:8px}
+ .sxNm b{font-size:19px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+ .sxRar{flex:none;font-size:10px;font-weight:900;letter-spacing:1px;border:2px solid;border-radius:20px;padding:3px 9px}
+ .sxCt{font-size:10px;letter-spacing:3px;opacity:.7}
+ .sxSt{font-size:15px;font-weight:900;color:#ffd400}
+ .sxSt .eq{color:#4dff9a}.sxSt .ok{color:#8fe8ff}.sxSt .no{color:#ff6b7a;font-size:12px;display:block;margin-top:2px}
+ .sxAct{min-width:0!important;width:100%;padding:13px!important;font-size:15px!important;letter-spacing:1px}
+ .sxAct:disabled{opacity:.55;filter:grayscale(.4)}
+ .sxD{font-size:13px;line-height:1.45;opacity:.9}
+ .sxF{margin:0;padding-left:18px;font-size:12px;line-height:1.7;opacity:.85}
+ .sxC{position:relative;border:2px solid #ffffff22;border-top:3px solid var(--rc);border-radius:14px;padding:8px 6px;background:linear-gradient(180deg,rgba(var(--bb),.12),#0a1030);display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;cursor:pointer;min-width:0}
+ .sxC:active{transform:scale(.97)}
+ .sxC.on{border-color:#fff;border-top-color:var(--rc);box-shadow:0 0 16px var(--rc)}
+ .sxC[data-r="leg"],.sxC[data-r="mit"]{animation:sxg 2.4s ease-in-out infinite}
+ .sxC .sxN{font-size:12px;line-height:1.15;word-break:break-word}
+ .sxC .sxRt{font-size:9px;font-weight:900;letter-spacing:1px;color:var(--rc)}
+ .sxC .sxP{font-size:10px;font-weight:800;color:#ffd400}
+ .sxC .sxP.ok{color:#8fe8ff}.sxC .sxP.eq{color:#4dff9a}
+ .sw{display:block;margin:4px 0;flex:none}
+ .sw.pad{width:12px;height:42px;border-radius:6px}
+ .sw.bl{width:30px;height:30px;border-radius:50%;margin:8px 0}
+ .sw.tb{width:54px;height:36px;border-radius:8px;border:2px solid #fff6}
+ .sw.fx{display:flex;gap:4px;height:30px;align-items:center}
+ .sw.fx b{width:9px;height:9px;border-radius:50%;display:block}
+ .sw.th{width:38px;height:38px;border-radius:50%;border:2px solid #fff8}
+ @media(max-width:760px){
+  .sxB{display:flex;flex-direction:column}
+  .sxR{order:-1;flex:none;max-height:46vh;padding:10px;gap:7px}
+  .sxPv{width:auto;height:21vh;max-width:100%;margin:0 auto}
+  .sxG{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .sxNm b{font-size:17px}
+  #sxQ{order:3;flex:1 1 100%}
+ }
  </style>`);
 
- /* ---------- etiquetas de rareza en la tienda ---------- */
- const RAR={};
- async function loadRar(){if(!fb||!ME||!SY)return;
-  try{const s=await FS.getDoc(FS.doc(fb.db,'config','specials'));
-   if(s.exists())(s.data().items||[]).forEach(i=>{if(i.r)RAR[i.id]=i.r})}catch(e){}}
- setInterval(loadRar,30000);
- const k1=setInterval(()=>{if(SY){loadRar();clearInterval(k1)}},1000);
- const _rs=rShop;
- rShop=function(){_rs();
-  try{document.querySelectorAll('#shG .it').forEach(d=>{
-   const nm=(d.children[1]||{}).textContent,it=IT.find(i=>i[0]===SC&&i[2]===nm&&RAR[i[1]]);
-   if(!it)return;const r=RC[RAR[it[1]]];if(!r)return;
-   d.style.borderColor=r[1];d.style.boxShadow='0 0 14px '+r[1];
-   d.children[1].insertAdjacentHTML('beforeend','<br><small style="color:'+r[1]+'">'+r[0]+'</small>')})}catch(e){}};
+ document.body.insertAdjacentHTML('beforeend',`
+ <div id="sx" class="hide">
+  <div class="sxH"><b class="sxTt">🛒 TIENDA</b><div class="sxCoin" id="sxCoin">DOP 0</div><input id="sxQ" class="in" placeholder="🔍 Buscar objeto" autocomplete="off" maxlength="24"><button class="sxX" id="sxX" type="button" aria-label="Cerrar">✕</button></div>
+  <div class="sxB">
+   <div class="sxL"><div class="sxT" id="sxT"></div><div class="sxG" id="sxG"></div></div>
+   <div class="sxR" id="sxR"><canvas id="sxPv" class="sxPv"></canvas><div id="sxI" style="display:flex;flex-direction:column;gap:9px"></div></div>
+  </div>
+ </div>`);
 
- /* ---------- el diseñador ---------- */
- const ds={k:'pad',name:'',r:'epico',n:1,c:['#ffd400','#ff5a1f','#ffffff','#39ff14','#ff3df2']};
+ /* ---------- dibujo de las tarjetas ---------- */
+ const sw=it=>{
+  const c=it.col&&it.col.length?it.col:['#667'],g=c.length>1?'linear-gradient(135deg,'+c.join(',')+')':c[0];
+  switch(it.cat){
+   case 'pad':return '<i class="sw pad" style="background:'+g+';box-shadow:0 0 12px '+c[0]+'"></i>';
+   case 'bl':return '<i class="sw bl" style="background:'+c[0]+';box-shadow:0 0 14px '+c[0]+'"></i>';
+   case 'tb':return '<i class="sw tb" style="background:'+g+'"></i>';
+   case 'fx':return '<i class="sw fx">'+c.slice(0,5).map(z=>'<b style="background:'+z+';box-shadow:0 0 6px '+z+'"></b>').join('')+'</i>';
+   default:return '<i class="sw th" style="background:linear-gradient(135deg,'+c[0]+' 50%,'+(c[1]||c[0])+' 50%)"></i>'}};
 
- function chips(el,list,cur,fn){
-  el.innerHTML='';
-  list.forEach(([k,l,col])=>{
+ const paintCoin=()=>{$('sxCoin').textContent='DOP '+fmt(prof.pc||0)};
+ function drawTabs(){
+  const T0=$('sxT');T0.innerHTML='';
+  const nInv=items().filter(i=>!i.std&&owned(i)).length;
+  CATS.concat([['inv','🎒','MIS OBJETOS ('+nInv+')']]).forEach(([k,ic,lb])=>{
    const b=document.createElement('button');b.type='button';
-   b.className='dsc'+(k===cur?' on':'');b.textContent=l;
-   if(col&&k!==cur)b.style.borderColor=col;
-   b.onclick=()=>{SFX.click();fn(k)};el.appendChild(b)})}
+   b.className='sxTb'+(k===cat&&!q.trim()?' on':'');b.textContent=ic+' '+lb;
+   b.onclick=()=>{SFX.click();cat=k;q='';$('sxQ').value='';selKey=k==='inv'?'':eqKey(k);render()};
+   T0.appendChild(b)})}
+ function drawGrid(it){
+  const G=$('sxG'),st=G.scrollTop,v=view();G.innerHTML='';
+  v.forEach(i=>{
+   const r=RAR[i.rar]||RAR.comun,eq=isEq(i),have=owned(i),d=document.createElement('div');
+   d.className='sxC'+(it&&i.key===it.key?' on':'');d.dataset.r=i.rar;d.style.setProperty('--rc',r[1]);
+   d.innerHTML=sw(i)+'<b class="sxN">'+esc(i.name)+'</b><small class="sxRt">'+r[0]+((cat==='inv'||q.trim())?' · '+CN[i.cat]:'')+'</small><span class="sxP '+(eq?'eq':have?'ok':'')+'">'+(eq?'✔ EQUIPADO':have?(i.std?'INCLUIDO':'COMPRADO'):'DOP '+fmt(i.price))+'</span>';
+   d.onclick=()=>{SFX.click();selKey=i.key;render()};
+   G.appendChild(d)});
+  if(!v.length)G.innerHTML='<div class="pst" style="grid-column:1/-1;padding:20px 0">'+(q.trim()?'No se encontró ningún objeto':'Aún no tienes objetos comprados')+'</div>';
+  G.scrollTop=st}
+ function drawPanel(it){
+  const pv=$('sxPv'),inf=$('sxI');
+  if(!it){pv.style.setProperty('--rc','#2a6bff');pv.classList.remove('sxGl');inf.innerHTML='<div class="pst">Aquí verás los detalles del objeto que selecciones</div>';return}
+  const r=RAR[it.rar]||RAR.comun,have=owned(it),eq=isEq(it),pc=prof.pc||0;
+  pv.style.setProperty('--rc',r[1]);pv.classList.toggle('sxGl',it.rar==='leg'||it.rar==='mit');
+  let st,bt,dis=false;
+  if(eq){st='<span class="eq">✔ EQUIPADO</span>';bt='✔ EQUIPADO';dis=true}
+  else if(have){st='<span class="ok">✔ '+(it.std?'INCLUIDO':'COMPRADO')+'</span> · sin equipar';bt='EQUIPAR'}
+  else if(it.ex){st='EXCLUSIVO';bt='🔒 SOLO POR REGALO';dis=true}
+  else{st='DOP '+fmt(it.price)+(pc<it.price?'<span class="no">Te faltan DOP '+fmt(it.price-pc)+'</span>':'');bt='COMPRAR · DOP '+fmt(it.price)}
+  inf.innerHTML='<div class="sxNm"><b>'+esc(it.name)+'</b><span class="sxRar" style="color:'+r[1]+';border-color:'+r[1]+'">'+r[0]+'</span></div>'
+   +'<div class="sxCt">'+CN[it.cat].toUpperCase()+'</div><div class="sxSt">'+st+'</div>'
+   +'<button id="sxAct" class="btn sxAct" type="button"'+(dis?' disabled':'')+'>'+bt+'</button>'
+   +'<p class="sxD">'+esc(it.desc)+'</p><ul class="sxF">'+it.feat.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul>';
+  const a=$('sxAct');if(a&&!dis)a.onclick=()=>{owned(it)?equip(it):purchase(it)}}
+ function render(){
+  const it=cur();CURI=it;paintCoin();drawTabs();drawGrid(it);drawPanel(it)}
 
- function drawCols(){
-  const el=$('dsCl');if(!el)return;el.innerHTML='';
-  for(let i=0;i<ds.n;i++){
-   const w=document.createElement('label');w.className='dsw';w.style.background=ds.c[i];
-   const inp=document.createElement('input');inp.type='color';inp.value=ds.c[i];
-   inp.oninput=()=>{ds.c[i]=inp.value;w.style.background=inp.value};
-   w.appendChild(inp);el.appendChild(w)}
-  if(ds.k==='fx'){
-   if(ds.n<5){const a=document.createElement('button');a.type='button';a.className='dsm';a.textContent='+';a.onclick=()=>{SFX.click();ds.n++;drawCols()};el.appendChild(a)}
-   if(ds.n>2){const m=document.createElement('button');m.type='button';m.className='dsm';m.textContent='−';m.onclick=()=>{SFX.click();ds.n--;drawCols()};el.appendChild(m)}}
-  const hint=$('dsHint');
-  if(hint)hint.textContent=ds.k==='pad'?'Color de tu paleta (la izquierda)':ds.k==='bl'?'Color de la pelota':ds.k==='tb'?'2 colores: degradado de la mesa':'De 2 a 5 colores de las partículas'}
+ /* ---------- compra y equipamiento reales ---------- */
+ function purchase(it){
+  if(busy)return;busy=true;
+  try{
+   if(owned(it)){toast('Ya tienes este objeto');return}
+   if(it.ex){toast('🔒 Objeto exclusivo: solo se obtiene por regalo');return}
+   if((prof.pc||0)<it.price){SFX.deny();toast('🪙 Te faltan DOP '+fmt(it.price-(prof.pc||0)));return}
+   const go=()=>{
+    if(owned(it)||(prof.pc||0)<it.price)return;      /* evita cobrar dos veces */
+    prof.pc=(prof.pc||0)-it.price;
+    prof.inv=prof.inv||[];if(!prof.inv.includes(it.id))prof.inv.push(it.id);
+    try{chkAch()}catch(e){}
+    saveP();updPC();SFX.point();toast('✔ Compraste '+it.name);render()};
+   if(it.price>=500)modal('CONFIRMAR COMPRA','¿Comprar <b>'+esc(it.name)+'</b> por <b>DOP '+fmt(it.price)+'</b>?<br><small>Te quedarán DOP '+fmt((prof.pc||0)-it.price)+'</small>',[['COMPRAR',go],['CANCELAR',null,'tg']]);
+   else go()
+  }finally{busy=false}}
+ function equip(it){
+  if(!owned(it))return;
+  prof.eq=prof.eq||{};prof.eq[it.cat]=it.id;saveP();
+  if(it.cat==='th'){try{applyTheme()}catch(e){}}
+  SFX.point();toast('✔ Equipado: '+it.name);render()}
 
- function renderAll(){
-  const cv=$('dsC');if(!cv)return;
-  chips($('dsK'),KN,ds.k,k=>{ds.k=k;ds.n=NT[k];renderAll()});
-  chips($('dsR'),Object.keys(RC).map(k=>[k,RC[k][0],RC[k][1]]),ds.r,k=>{ds.r=k;renderAll()});
-  cv.style.setProperty('--rc',RC[ds.r][1]);
-  drawCols()}
+ /* ---------- los temas comprados cambian los colores de la interfaz ---------- */
+ const _at=applyTheme;
+ applyTheme=function(){
+  _at();
+  const t=itOf((prof.eq||{}).th);
+  if(t&&t[0]==='th'&&t[4]&&t[4].length>1){
+   T={n:t[2],a:t[4][0],b:t[4][1]};
+   const r=document.documentElement.style;
+   r.setProperty('--a',T.a);r.setProperty('--b',T.b);r.setProperty('--ar',rgb(T.a));r.setProperty('--bb',rgb(T.b))}};
+ $('sTh').addEventListener('click',()=>{if(prof.eq&&prof.eq.th){prof.eq.th='';saveP()}},true);
+ try{applyTheme()}catch(e){}
 
- /* ---------- vista previa animada ---------- */
- function runPreview(cv){
-  const g=cv.getContext('2d'),VW=320,VH=170;
-  let last=performance.now(),bx=40,bd=1,tr=[],pt=[],py=[VH/2,VH/2];
-  const rr=(x,y,w,h,r)=>{g.beginPath();g.roundRect?g.roundRect(x,y,w,h,r):g.rect(x,y,w,h)};
-  function bst(x,y,cols,n){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=30+Math.random()*130;pt.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:.5+Math.random()*.5,c:cols[i%cols.length]})}}
+ /* ---------- la pelota equipada deja estela de su color en la partida ---------- */
+ const _dgT=drawGame;
+ drawGame=function(dt){
+  _dgT(dt);
+  try{
+   const bl=itOf((prof.eq||{}).bl);
+   if(bl&&B&&B.tr&&B.tr.length&&!(B.gh>0)&&fogA(B.x)>.5){
+    x.save();
+    B.tr.forEach((p,i)=>{x.globalAlpha=i/B.tr.length*.6;x.fillStyle=bl[4][0];x.beginPath();x.arc(p.x,p.y,9*i/B.tr.length,0,6.28);x.fill()});
+    x.restore()}
+  }catch(e){}};
+
+ /* ---------- vista previa animada (independiente de compra y equipamiento) ---------- */
+ function look(it){
+  const th=TH[SET.th||0]||TH[0],L={pad:null,ball:null,tbl:null,fx:null,a:th.a,b:th.b};
+  if(it&&!it.std){
+   const c=it.col||[];
+   if(it.cat==='pad')L.pad=c[0];
+   else if(it.cat==='bl')L.ball=c[0];
+   else if(it.cat==='tb')L.tbl=[c[0],c[1]||c[0]];
+   else if(it.cat==='fx')L.fx=c;
+   else if(it.cat==='th'){L.a=c[0];L.b=c[1]||c[0]}}
+  return L}
+ function startPv(){
+  const my=++tok,cv=$('sxPv');
+  if(!cv.dataset.s){cv.width=600;cv.height=400;cv.dataset.s='1'}
+  const g=cv.getContext('2d'),VW=300,VH=200;
+  let last=performance.now(),bx=44,bd=1,tr=[],pt=[],py=[VH/2,VH/2];
+  const rr=(a,b,w,h,r)=>{g.beginPath();if(g.roundRect)g.roundRect(a,b,w,h,r);else g.rect(a,b,w,h)};
+  function bst(a,b,cols,n){for(let i=0;i<n;i++){const an=Math.random()*6.283,v=30+Math.random()*130;pt.push({x:a,y:b,vx:Math.cos(an)*v,vy:Math.sin(an)*v,l:.5+Math.random()*.5,c:cols[i%cols.length]})}}
   function frame(now){
-   if(!cv.isConnected)return;
-   const dt=Math.min(.05,(now-last)/1000);last=now;
-   g.clearRect(0,0,VW,VH);
+   if(my!==tok||!cv.isConnected)return;
+   const it=CURI,L=look(it),dt=Math.min(.05,(now-last)/1000);last=now;
+   g.setTransform(2,0,0,2,0,0);g.clearRect(0,0,VW,VH);
    g.fillStyle='#02020a';g.fillRect(0,0,VW,VH);
-   if(ds.k==='tb'){
-    const gr=g.createLinearGradient(0,0,VW,VH);gr.addColorStop(0,ds.c[0]);gr.addColorStop(1,ds.c[1]);
-    g.globalAlpha=.9;g.fillStyle=gr;g.fillRect(0,0,VW,VH);g.globalAlpha=1}
-   else{g.fillStyle='rgba(20,70,200,.18)';g.fillRect(8,8,VW-16,VH-16)}
-   g.save();g.strokeStyle='#fff';g.globalAlpha=.8;g.lineWidth=2;g.shadowColor='#2a6bff';g.shadowBlur=10;g.strokeRect(8,8,VW-16,VH-16);g.restore();
-   g.save();g.globalAlpha=.4;g.strokeStyle='#9cf';g.lineWidth=2;g.setLineDash([6,8]);g.beginPath();g.moveTo(VW/2,8);g.lineTo(VW/2,VH-8);g.stroke();g.restore();
-   const by=VH/2+Math.sin(now/380)*38;
+   if(L.tbl){const gr=g.createLinearGradient(0,0,VW,VH);gr.addColorStop(0,L.tbl[0]);gr.addColorStop(1,L.tbl[1]);g.globalAlpha=.92;g.fillStyle=gr;g.fillRect(0,0,VW,VH);g.globalAlpha=1}
+   else{g.fillStyle='rgba(20,70,200,.20)';g.fillRect(8,8,VW-16,VH-16)}
+   g.save();g.strokeStyle='#fff';g.globalAlpha=.85;g.lineWidth=2;g.shadowColor=L.b;g.shadowBlur=10;g.strokeRect(8,8,VW-16,VH-16);g.restore();
+   g.save();g.globalAlpha=.45;g.strokeStyle=L.b;g.lineWidth=2;g.setLineDash([6,8]);g.beginPath();g.moveTo(VW/2,8);g.lineTo(VW/2,VH-8);g.stroke();g.restore();
+   const by=VH/2+Math.sin(now/380)*46;
    bx+=bd*150*dt;
-   let hitNow=false;
-   if(bx>=VW-34){bx=VW-34;bd=-1;hitNow=true}else if(bx<=34){bx=34;bd=1;hitNow=true}
-   if(hitNow){const cols=ds.k==='fx'?ds.c.slice(0,ds.n):['#ffffff',bd>0?'#ff2233':'#2a6bff'];bst(bx,by,cols,ds.k==='fx'?26:8)}
+   let hit=false;
+   if(bx>=VW-34){bx=VW-34;bd=-1;hit=true}else if(bx<=34){bx=34;bd=1;hit=true}
+   if(hit)bst(bx,by,L.fx||['#ffffff',bd>0?L.a:L.b],L.fx?28:8);
    py[0]+=(by-py[0])*Math.min(1,dt*8);py[1]+=(by-py[1])*Math.min(1,dt*8);
-   [[14,ds.k==='pad'?ds.c[0]:'#ff2233',0],[VW-26,'#2a6bff',1]].forEach(([px,col,i])=>{
-    g.save();g.fillStyle=col;g.shadowColor=col;g.shadowBlur=14;rr(px,py[i]-28,12,56,6);g.fill();g.restore()});
+   const pulse=it&&it.cat==='pad'?8*Math.sin(now/300):0;
+   [[14,L.pad||L.a,0],[VW-26,L.b,1]].forEach(([px,col,i])=>{g.save();g.fillStyle=col;g.shadowColor=col;g.shadowBlur=18+(i===0?pulse:0);rr(px,py[i]-28,12,56,6);g.fill();g.restore()});
    tr.push([bx,by]);if(tr.length>14)tr.shift();
-   tr.forEach((q,i)=>{g.globalAlpha=i/tr.length*.5;g.fillStyle='#9cf';g.beginPath();g.arc(q[0],q[1],8*i/tr.length,0,6.283);g.fill()});
+   const tc=L.ball||'#99ccff',br=it&&it.cat==='bl'?10:8;
+   tr.forEach((p,i)=>{g.globalAlpha=i/tr.length*.55;g.fillStyle=tc;g.beginPath();g.arc(p[0],p[1],br*i/tr.length,0,6.283);g.fill()});
    g.globalAlpha=1;
-   const bc=ds.k==='bl'?ds.c[0]:'#ffffff';
-   g.save();g.fillStyle=bc;g.shadowColor=ds.k==='bl'?ds.c[0]:'#9cf';g.shadowBlur=16;g.beginPath();g.arc(bx,by,8,0,6.283);g.fill();g.restore();
-   for(const q of pt){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt;g.globalAlpha=Math.max(0,q.l);g.fillStyle=q.c;g.fillRect(q.x,q.y,3,3)}
+   g.save();g.fillStyle=L.ball||'#ffffff';g.shadowColor=L.ball||'#99ccff';g.shadowBlur=16;g.beginPath();g.arc(bx,by,br,0,6.283);g.fill();g.restore();
+   for(const p of pt){p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=dt;g.globalAlpha=Math.max(0,p.l);g.fillStyle=p.c;g.fillRect(p.x,p.y,3,3)}
    g.globalAlpha=1;
    for(let i=pt.length-1;i>=0;i--)if(pt[i].l<=0)pt.splice(i,1);
-   g.save();g.font='bold 11px system-ui,Arial';g.textBaseline='bottom';g.fillStyle=RC[ds.r][1];g.shadowColor='#000';g.shadowBlur=4;
-   g.fillText(RC[ds.r][0]+(ds.name?' · '+ds.name:''),16,VH-14);g.restore();
+   if(it&&it.cat==='th'){
+    g.save();g.strokeStyle=L.b;g.lineWidth=2;g.shadowColor=L.b;g.shadowBlur=8;rr(16,14,70,22,11);g.stroke();
+    g.fillStyle='#fff';g.font='bold 12px system-ui,Arial';g.textAlign='center';g.textBaseline='middle';g.shadowBlur=0;g.fillText('3 - 2',51,25);
+    const gr=g.createLinearGradient(90,0,210,0);gr.addColorStop(0,L.a);gr.addColorStop(1,L.b);g.fillStyle=gr;rr(90,VH-38,120,24,12);g.fill();
+    g.fillStyle='#fff';g.fillText('▶ JUGAR',150,VH-26);g.restore()}
    requestAnimationFrame(frame)}
   requestAnimationFrame(frame)}
 
- /* ---------- crear ---------- */
- async function create(){
-  const nm=ds.name.replace(/[<>&"'`]/g,'').trim().slice(0,20);
-  if(nm.length<2){toast('Ponle un nombre al objeto');return}
-  if(!fb||!ME){toast('Entra con tu cuenta');return}
-  const item={id:'x'+rid(),k:ds.k,name:nm,c:ds.c.slice(0,ds.n),r:ds.r};
+ /* ---------- abrir / cerrar ---------- */
+ async function loadSrv(){
+  if(!fb||!ME||!SY)return;
   try{
-   await FS.setDoc(FS.doc(fb.db,'config','specials'),{items:FS.arrayUnion(item)},{merge:true});
-   FS.addDoc(FS.collection(fb.db,'adminLog'),{by:ME.uid,byName:prof.name,action:'special_new',target:'',why:nm,result:'ok',t:Date.now()}).catch(()=>{});
-   if(!IT.some(i=>i[1]===item.id))IT.push([item.k,item.id,item.name,99999999,item.c]);
-   RAR[item.id]=item.r;
-   SFX.point();toast('★ Objeto creado: '+nm);
-   const t=$('apT')&&$('apT').children[6];if(t)t.click()
-  }catch(e){SFX.deny();toast(errEs(e))}}
+   const d=await pget(prof.id);if(d)GX=d.gx||[];
+   const s=await FS.getDoc(FS.doc(fb.db,'config','specials'));
+   if(s.exists())(s.data().items||[]).forEach(i=>{
+    if(!IT.some(z=>z[1]===i.id))IT.push([i.k,i.id,i.name,99999999,i.c]);
+    if(i.r)SPE[i.id]=i.r})
+  }catch(e){}
+  if(!$('sx').classList.contains('hide'))render()}
+ function openShop(){
+  selKey=cat==='inv'?'':eqKey(cat);q='';$('sxQ').value='';
+  $('sx').classList.remove('hide');render();startPv();loadSrv()}
+ function closeShop(){tok++;$('sx').classList.add('hide')}
+ $('nSh').onclick=()=>{au();SFX.click();openShop()};
+ $('sxX').onclick=()=>{SFX.click();closeShop()};
+ $('sxQ').oninput=e=>{q=e.target.value;render()};
+ addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('sx').classList.contains('hide'))closeShop()});
 
- /* ---------- se inserta dentro de PANEL MAESTRO > Config ---------- */
- function build(){
-  const go=$('spGo');if(!go||$('dsg'))return;
-  const card=go.closest('.apc');if(!card)return;
-  ['spK','spN'].forEach(i=>{const e=$(i);if(e)e.style.display='none'});
-  const c1=$('spC1');if(c1&&c1.parentElement)c1.parentElement.style.display='none';
-  go.style.display='none';
-  const box=document.createElement('div');box.id='dsg';box.className='dsg';
-  box.innerHTML='<canvas id="dsC" width="320" height="170"></canvas>'
-   +'<div class="dsr" id="dsK"></div>'
-   +'<input id="dsN" class="in" maxlength="20" placeholder="Nombre del objeto" autocomplete="off">'
-   +'<div class="dsr" id="dsR"></div>'
-   +'<div class="pst">COLORES</div><div class="dsr" id="dsCl"></div><small class="mini" id="dsHint"></small>'
-   +'<div class="pst">PLANTILLAS RÁPIDAS</div><div class="dsr" id="dsP"></div>'
-   +'<button class="btn" id="dsGo" type="button">★ CREAR OBJETO</button>';
-  const title=card.querySelector('b');
-  (title||card).insertAdjacentElement(title?'afterend':'afterbegin',box);
-  $('dsN').value=ds.name;
-  $('dsN').oninput=e=>{ds.name=e.target.value};
-  PR.forEach((p,i)=>{
-   const b=document.createElement('button');b.type='button';b.className='dsc';b.textContent=p[1];b.style.borderColor=RC[p[2]][1];
-   b.onclick=()=>{SFX.click();ds.k=p[0];ds.name=p[1];ds.r=p[2];ds.n=p[3].length;p[3].forEach((c,j)=>{ds.c[j]=c});$('dsN').value=ds.name;renderAll()};
-   $('dsP').appendChild(b)});
-  $('dsGo').onclick=()=>{SFX.click();create()};
-  renderAll();runPreview($('dsC'))}
-
- const ap=$('apB');
- if(ap){
-  new MutationObserver(()=>{clearTimeout(build.t);build.t=setTimeout(build,50)}).observe(ap,{childList:true,subtree:true});
-  build()}
+ /* al iniciar sesión: cargar objetos regalados y reaplicar el tema */
+ const _lm=loadMe;
+ loadMe=async function(){await _lm();try{applyTheme()}catch(e){}loadSrv()};
 })();
 
 </script>
