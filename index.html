@@ -3952,6 +3952,26 @@ drawGame=function(dt){_dg19(dt);
 })();
 
 
+(function(){
+ var xp=prof.xp||0,raw=0,sc=0;
+ Object.defineProperty(prof,'xp',{enumerable:true,configurable:true,
+  get:function(){return xp},
+  set:function(v){
+   v=Number(v)||0;var old=xp,m=mode;
+   if((m==='over'||m==='play')&&old>=1500){
+    if(v>old){var d=v-old;sc=d===100?25:d===120?35:d===10?5:Math.round(d*.25);raw=d;v=old+sc}
+    else if(v<old&&m==='play'){v=Math.max(0,old-25)}
+   }
+   xp=v}});
+ var ex=document.getElementById('exp');
+ new MutationObserver(function(){
+  if(!raw)return;var s='+'+raw+' XP';
+  if(ex.textContent.indexOf(s)>-1){ex.textContent=ex.textContent.replace(s,'+'+sc+' XP');raw=0}
+ }).observe(ex,{childList:true,characterData:true,subtree:true});
+})();
+
+
+
 </script>
 
 <script>
