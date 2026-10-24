@@ -3766,6 +3766,192 @@ $('sx').classList.add('hide');
  },{passive:false});
 })();
 
+
+/* ===== D.M.R v19: CREAR OBJETO ESPECIAL pro (menú ☰ + vista previa) · BORRAR de la tienda ===== */
+(function(){
+if(window.__dmr19)return;window.__dmr19=1;
+const KS=[['pad','🏓','Paleta'],['bl','⚪','Pelota'],['tb','🟦','Mesa'],['fx','✨','Efecto'],['th','🎨','Tema']];
+const CN={pad:'PALETAS',bl:'PELOTAS',tb:'FONDOS',fx:'EFECTOS',th:'TEMAS'};
+const HINT={pad:'Color 1 = color de la paleta.',bl:'Color 1 = cuerpo · Color 2 = rayas que giran.',tb:'Fondo en degradado: Color 1 → Color 2.',fx:'Chispas de Color 1 y Color 2 al golpear.',th:'Color 1 y 2 cambian los colores del juego.'};
+const REV={Paleta:'pad',Pelota:'bl',Fondo:'tb',Efecto:'fx',Tema:'th'},ORD=['pad','bl','tb','fx','th','inv'];
+const SP={};let HID=new Set(),kind='pad',tk=0,dc='pad';
+const CF=()=>FS.doc(fb.db,'config','specials'),HF=()=>FS.doc(fb.db,'config','storeHidden');
+const logA=(a,t)=>{try{FS.addDoc(FS.collection(fb.db,'adminLog'),{by:ME.uid,byName:prof.name,action:a,target:String(t||''),why:'',result:'ok',t:Date.now()}).catch(()=>{})}catch(e){}};
+
+/* ---------- estilos ---------- */
+document.head.insertAdjacentHTML('beforeend',`<style>
+.nsW{position:relative}
+canvas.nsC{position:static!important;inset:auto!important;width:100%!important;height:auto!important;aspect-ratio:3/2;display:block;border-radius:14px;border:2px solid var(--b);background:#02020a;box-shadow:0 0 18px rgba(var(--bb),.45)}
+.nsMb{position:absolute;top:8px;right:8px;width:42px;height:42px;border-radius:12px;border:2px solid var(--b);background:rgba(7,11,34,.92);color:#fff;font-size:21px;font-weight:900;z-index:2;box-shadow:0 0 12px rgba(var(--bb),.6)}
+.nsMn{position:absolute;top:56px;right:8px;z-index:3;width:178px;background:rgba(7,11,34,.98);border:2px solid var(--b);border-radius:16px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 0 24px rgba(var(--bb),.65);animation:dd .16s ease-out}
+.nsMn button{padding:11px 10px;border-radius:11px;border:1px solid transparent;background:transparent;color:#fff;font-size:14px;font-weight:800;text-align:left;letter-spacing:.5px}
+.nsMn button.on{background:linear-gradient(90deg,rgba(var(--ar),.4),rgba(var(--bb),.45));border-color:#fff6}
+.nsTag{position:absolute;top:12px;left:12px;z-index:2;background:rgba(7,11,34,.85);border:1px solid #ffffff55;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:900;letter-spacing:2px}
+.nsL{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:2px;opacity:.9}
+.nsL input{height:44px;padding:4px}
+#nsD{background:rgba(0,0,10,.88);z-index:39}
+.nsTb{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.nsTb::-webkit-scrollbar{display:none}
+.nsTb button{flex:none;padding:8px 11px;border-radius:12px;border:2px solid var(--b);background:#0a1030;color:#fff;font-size:11px;font-weight:800;white-space:nowrap}
+.nsTb button.on{background:linear-gradient(90deg,var(--a),var(--b));border-color:#fff}
+.nsG{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.nsK{border:2px solid #ffffff22;border-top:3px solid var(--b);border-radius:14px;padding:9px 4px;background:#0a1030;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:12px;font-weight:800;color:#fff;min-width:0;min-height:96px;justify-content:center}
+.nsK:active{transform:scale(.96)}.nsK i{display:block}.nsK small{font-size:9px;color:#ffd400;font-weight:800}
+</style>`);
+document.body.insertAdjacentHTML('beforeend',`<div id="nsD" class="ov hide"><div class="panel" style="max-width:420px"><h2>🗑 BORRAR OBJETOS</h2><div class="nsTb" id="nsDt"></div><div class="nsG" id="nsDg"></div><small class="mini">Toca un objeto para borrarlo de la tienda.<br>En OCULTOS puedes devolverlo a la tienda.</small><button class="btn" id="nsDx" type="button">CERRAR</button></div></div>`);
+
+/* ---------- pelota con diseño (preview y partida) ---------- */
+function ball(g,px,py,r,c1,c2,t){g.save();g.shadowColor=c1;g.shadowBlur=r*2;g.fillStyle=c1;g.beginPath();g.arc(px,py,r,0,6.283);g.fill();g.shadowBlur=0;g.clip();
+ g.translate(px,py);g.rotate(t*4);g.fillStyle=c2;for(let i=-1;i<2;i++)g.fillRect(-r,i*r*.7-r*.14,2*r,r*.28);g.restore()}
+
+/* ---------- vista previa en vivo ---------- */
+function pv(){
+ const my=++tk,cv=$('nsPv');if(!cv)return;const g=cv.getContext('2d');
+ let t=0,l=performance.now(),bx=44,bd=1,tr=[],P=[],py=100;
+ const rr=(a,b,w,h,r)=>{g.beginPath();g.roundRect?g.roundRect(a,b,w,h,r):g.rect(a,b,w,h)};
+ const fr=n=>{
+  if(my!==tk||!cv.isConnected)return;
+  const dt=Math.min(.05,(n-l)/1000);l=n;t+=dt;
+  const c1=$('nsC1').value,c2=$('nsC2').value,th=TH[SET.th||0]||TH[0];
+  let A=th.a,Bc=th.b;if(kind==='th'){A=c1;Bc=c2}
+  g.setTransform(2,0,0,2,0,0);g.globalAlpha=1;g.fillStyle='#02020a';g.fillRect(0,0,300,200);
+  if(kind==='tb'){const q=g.createLinearGradient(0,0,300,200);q.addColorStop(0,c1);q.addColorStop(1,c2);g.fillStyle=q;g.fillRect(0,0,300,200)}
+  else{g.fillStyle='rgba(20,70,200,.2)';g.fillRect(8,8,284,184)}
+  g.save();g.strokeStyle='#fff';g.globalAlpha=.85;g.lineWidth=2;g.shadowColor=Bc;g.shadowBlur=8;g.strokeRect(8,8,284,184);g.restore();
+  g.save();g.globalAlpha=.4;g.strokeStyle=Bc;g.lineWidth=2;g.setLineDash([6,8]);g.beginPath();g.moveTo(150,8);g.lineTo(150,192);g.stroke();g.restore();
+  const by=100+Math.sin(t*2.6)*50;bx+=bd*150*dt;
+  if(bx>=262||bx<=38){bx=Math.max(38,Math.min(262,bx));bd=-bd;
+   const fc=kind==='fx'?[c1,c2]:['#ffffff',bd>0?A:Bc],nn=kind==='fx'?30:8;
+   for(let i=0;i<nn;i++){const an=Math.random()*6.283,v=40+Math.random()*150;P.push({x:bx,y:by,vx:Math.cos(an)*v,vy:Math.sin(an)*v,l:.7,c:fc[i%fc.length]})}}
+  py+=(by-py)*Math.min(1,dt*8);
+  [[14,kind==='pad'?c1:A],[274,Bc]].forEach(([px,col])=>{g.save();g.fillStyle=col;g.shadowColor=col;g.shadowBlur=14;rr(px,py-28,12,56,6);g.fill();g.restore()});
+  tr.push({x:bx,y:by});if(tr.length>14)tr.shift();
+  tr.forEach((q,i)=>{g.globalAlpha=i/tr.length*.55;g.fillStyle=kind==='bl'?c1:'#99ccff';g.beginPath();g.arc(q.x,q.y,9*i/tr.length,0,6.283);g.fill()});
+  g.globalAlpha=1;
+  if(kind==='bl')ball(g,bx,by,9,c1,c2,t);
+  else{g.save();g.fillStyle='#fff';g.shadowColor='#99ccff';g.shadowBlur=14;g.beginPath();g.arc(bx,by,9,0,6.283);g.fill();g.restore()}
+  P.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.l-=dt;g.globalAlpha=Math.max(0,p.l);g.fillStyle=p.c;g.fillRect(p.x,p.y,kind==='fx'?4:3,kind==='fx'?4:3)});
+  g.globalAlpha=1;P=P.filter(p=>p.l>0);
+  if(kind==='th'){g.save();g.strokeStyle=Bc;g.lineWidth=2;rr(16,14,70,22,11);g.stroke();g.fillStyle='#fff';g.font='bold 12px system-ui,Arial';g.textAlign='center';g.textBaseline='middle';g.fillText('3 - 2',51,25);
+   const q=g.createLinearGradient(90,0,210,0);q.addColorStop(0,A);q.addColorStop(1,Bc);g.fillStyle=q;rr(90,160,120,24,12);g.fill();g.fillStyle='#fff';g.fillText('▶ JUGAR',150,172);g.restore()}
+  requestAnimationFrame(fr)};
+ requestAnimationFrame(fr)}
+
+/* ---------- tipo de objeto (menú ☰) ---------- */
+function setKind(k){kind=k;const m=KS.find(z=>z[0]===k);
+ if($('nsTag'))$('nsTag').textContent=m[1]+' '+m[2].toUpperCase();
+ if($('nsHint'))$('nsHint').textContent=HINT[k];
+ document.querySelectorAll('#nsMn button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+ const mn=$('nsMn');if(mn)mn.classList.add('hide')}
+
+/* ---------- reemplaza la tarjeta fea de Config ---------- */
+function enhance(){
+ const go=$('spGo');if(!go)return;
+ const card=go.closest('.apc');if(!card||card.id==='nsBox')return;card.id='nsBox';
+ card.innerHTML='<b>★ CREAR OBJETO ESPECIAL</b>'
+  +'<div class="nsW"><canvas id="nsPv" class="nsC" width="600" height="400"></canvas><span class="nsTag" id="nsTag"></span>'
+  +'<button class="nsMb" id="nsMb" type="button" aria-label="Tipo de objeto">☰</button>'
+  +'<div class="nsMn hide" id="nsMn">'+KS.map(k=>'<button type="button" data-k="'+k[0]+'">'+k[1]+' '+k[2]+'</button>').join('')+'</div></div>'
+  +'<input id="nsName" class="in" maxlength="20" placeholder="Nombre del objeto" autocomplete="off">'
+  +'<div class="bg"><label class="nsL">COLOR 1<input id="nsC1" type="color" class="in" value="#c0c8d4"></label><label class="nsL">COLOR 2<input id="nsC2" type="color" class="in" value="#6a7585"></label></div>'
+  +'<small id="nsHint"></small>'
+  +'<button class="btn" id="nsGo" type="button" style="min-width:0">★ CREAR</button>'
+  +'<button class="tg" id="nsDel" type="button">🗑 BORRAR OBJETOS</button>'
+  +'<small>Solo se consigue por regalo (a verificados gris).</small>';
+ $('nsMb').onclick=e=>{e.stopPropagation();SFX.click();$('nsMn').classList.toggle('hide')};
+ $('nsMn').querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();SFX.click();setKind(b.dataset.k)});
+ $('nsGo').onclick=create;
+ $('nsDel').onclick=()=>{SFX.click();dc='pad';drawDel();sh('nsD',1)};
+ setKind(kind);pv()}
+new MutationObserver(enhance).observe($('apB'),{childList:true});
+document.addEventListener('click',e=>{const m=$('nsMn');if(m&&!e.target.closest('#nsMn,#nsMb'))m.classList.add('hide')});
+
+/* ---------- crear ---------- */
+async function create(){
+ SFX.click();const nm=$('nsName').value.trim();
+ if(nm.length<2){toast('Pon un nombre al objeto');return}
+ if(!fb||!ME){toast('Entra con tu cuenta');return}
+ const id='x'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),c=[$('nsC1').value,$('nsC2').value];
+ try{await FS.setDoc(CF(),{items:FS.arrayUnion({id,k:kind,name:nm,c})},{merge:true});
+  IT.push([kind,id,nm,99999999,c]);SP[id]={k:kind,c};logA('special_new',nm);
+  SFX.point();toast('★ Creado: '+nm);$('nsName').value=''}
+ catch(e){SFX.deny();toast(errEs(e))}}
+
+/* ---------- ventana BORRAR (igual que la tienda, por categorías) ---------- */
+const swt=i=>{const c=i[4]||['#888'],c2=c[1]||c[0];
+ if(i[0]==='pad')return'<i style="width:10px;height:34px;border-radius:5px;background:'+c[0]+';box-shadow:0 0 10px '+c[0]+'"></i>';
+ if(i[0]==='bl')return'<i style="width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 35%,'+c2+','+c[0]+')"></i>';
+ if(i[0]==='fx')return'<span style="display:flex;gap:3px;height:30px;align-items:center">'+c.slice(0,5).map(z=>'<b style="width:8px;height:8px;border-radius:50%;background:'+z+'"></b>').join('')+'</span>';
+ return'<i style="width:'+(i[0]==='th'?30:44)+'px;height:30px;border-radius:'+(i[0]==='th'?'50%':'8px')+';border:2px solid #fff6;background:linear-gradient(135deg,'+c[0]+','+c2+')"></i>'};
+function drawDel(){
+ const T0=$('nsDt');T0.innerHTML='';
+ KS.map(k=>[k[0],k[1]+' '+CN[k[0]]]).concat([['hid','🚫 OCULTOS ('+HID.size+')']]).forEach(([k,lb])=>{
+  const b=document.createElement('button');b.type='button';b.className=k===dc?'on':'';b.textContent=lb;
+  b.onclick=()=>{SFX.click();dc=k;drawDel()};T0.appendChild(b)});
+ const G=$('nsDg');G.innerHTML='';
+ const L=IT.filter(i=>CN[i[0]]&&i[1]&&(dc==='hid'?HID.has(i[1]):(i[0]===dc&&!HID.has(i[1]))));
+ L.forEach(i=>{const d=document.createElement('button');d.type='button';d.className='nsK';
+  d.innerHTML=swt(i)+'<span>'+esc(i[2])+'</span><small>'+(i[1][0]==='x'?'★ ESPECIAL':'DOP '+fmt(i[3]))+'</small>';
+  d.onclick=()=>{SFX.click();dc==='hid'?askRestore(i):askDel(i)};G.appendChild(d)});
+ if(!L.length)G.innerHTML='<div class="pst" style="grid-column:1/-1;padding:18px 0">'+(dc==='hid'?'No hay objetos ocultos':'No hay objetos aquí')+'</div>'}
+$('nsDx').onclick=()=>{SFX.click();sh('nsD',0)};
+const askDel=i=>modal('🗑 BORRAR','¿Quitar <b>'+esc(i[2])+'</b> de la tienda?<br><small>'+(i[1][0]==='x'?'Es un objeto especial: se borra del todo.':'Dejará de aparecer en la tienda (puedes restaurarlo en OCULTOS).')+'</small>',[['SÍ, BORRAR',()=>del(i)],['CANCELAR',null,'tg']]);
+const askRestore=i=>modal('↩ RESTAURAR','¿Devolver <b>'+esc(i[2])+'</b> a la tienda?',[['SÍ, RESTAURAR',()=>restore(i)],['CANCELAR',null,'tg']]);
+async function del(i){const id=i[1];
+ try{
+  if(id[0]==='x'){
+   const s=await FS.getDoc(CF()),items=(s.exists()?s.data().items||[]:[]).filter(z=>z.id!==id);
+   await FS.setDoc(CF(),{items},{merge:true});
+   const n=IT.findIndex(z=>z[1]===id);if(n>=0)IT.splice(n,1);delete SP[id];
+   if(prof.eq&&prof.eq[i[0]]===id){prof.eq[i[0]]='';saveP()}
+  }else{await FS.setDoc(HF(),{ids:FS.arrayUnion(id)},{merge:true});HID.add(id)}
+  logA('store_delete',id);SFX.point();toast('🗑 Borrado de la tienda');applyHide();drawDel()
+ }catch(e){SFX.deny();toast(errEs(e))}}
+async function restore(i){
+ try{await FS.setDoc(HF(),{ids:FS.arrayRemove(i[1])},{merge:true});HID.delete(i[1]);logA('store_restore',i[1]);SFX.point();toast('↩ Restaurado');drawDel()}
+ catch(e){SFX.deny();toast(errEs(e))}}
+
+/* ---------- la tienda oculta lo borrado (para todos los jugadores) ---------- */
+function applyHide(){
+ const g=$('s8g');if(!g||!HID.size)return;
+ const ai=[...$('s8t').children].findIndex(b=>b.classList.contains('on'));
+ g.querySelectorAll('.s8k').forEach(d=>{
+  const sm=d.querySelector(':scope>small'),nmE=sm&&sm.previousElementSibling;if(!nmE)return;
+  const p=sm.textContent.split(' · '),cat=p[1]?REV[p[1].trim()]:ORD[ai];
+  const it=IT.find(z=>z[0]===cat&&z[2]===nmE.textContent&&z[1]);
+  if(it&&HID.has(it[1]))d.remove()})}
+if($('s8g'))new MutationObserver(applyHide).observe($('s8g'),{childList:true});
+
+async function load(){
+ if(!fb||!ME||!SY)return;
+ try{
+  const s=await FS.getDoc(CF());(s.exists()?s.data().items||[]:[]).forEach(i=>{SP[i.id]={k:i.k,c:i.c||['#ccc','#888']}});
+  const h=await FS.getDoc(HF());HID=new Set(h.exists()?h.data().ids||[]:[]);applyHide()
+ }catch(e){}}
+setInterval(load,25000);const w19=setInterval(()=>{if(SY){load();clearInterval(w19)}},1000);
+const _o19=$('nSh').onclick;$('nSh').onclick=function(){load();return _o19.apply(this,arguments)};
+
+/* ---------- en la partida: pelota y efecto de objetos especiales ---------- */
+const MP=[];
+const dark=()=>{try{if(evOn('apagon')){const ph=evT%4;return ph>2.3&&ph<3.7}}catch(e){}return false};
+const _hit19=hit;
+hit=function(i){_hit19(i);
+ try{const s=SP[(prof.eq||{}).fx];if(s&&s.k==='fx'&&B)burst(MP,B.x,B.y,28,s.c,360)}catch(e){}};
+const _dg19=drawGame;
+drawGame=function(dt){_dg19(dt);
+ try{
+  x.save();
+  if(!dark()){
+   drawParts(MP,dt);
+   const s=SP[(prof.eq||{}).bl];
+   if(s&&s.k==='bl'&&B&&B.tr&&!(B.gh>0)&&fogA(B.x)>.5){
+    B.tr.forEach((q,i)=>{x.globalAlpha=i/B.tr.length*.6;x.fillStyle=s.c[0];x.beginPath();x.arc(q.x,q.y,10*i/B.tr.length,0,6.283);x.fill()});
+    x.globalAlpha=1;ball(x,B.x,B.y,10.5,s.c[0],s.c[1]||'#ffffff',performance.now()/1e3)}
+  }else MP.length=0;
+  x.restore()
+ }catch(e){}};
+})();
+
+
 </script>
 
 <script>
